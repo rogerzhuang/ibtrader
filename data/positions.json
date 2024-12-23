@@ -1,20 +1,20 @@
 {
     "LCID_STOCK_PAIRS_TRADING_001": {
         "symbol": "LCID",
-        "quantity": -1499.0,
-        "avg_price": 2.747885256837892,
+        "quantity": 0.0,
+        "avg_price": 0,
         "strategy_id": "PAIRS_TRADING_001",
         "instrument_type": "STOCK",
-        "last_updated": "2024-12-20T15:45:02.907703-05:00",
+        "last_updated": "2024-12-23T15:46:01.971754-05:00",
         "pair_id": "LCID/RIVN"
     },
     "RIVN_STOCK_PAIRS_TRADING_001": {
         "symbol": "RIVN",
-        "quantity": 332.0,
-        "avg_price": 13.333253012048194,
+        "quantity": 0.0,
+        "avg_price": 0,
         "strategy_id": "PAIRS_TRADING_001",
         "instrument_type": "STOCK",
-        "last_updated": "2024-12-20T15:45:03.090725-05:00",
+        "last_updated": "2024-12-23T15:46:03.064134-05:00",
         "pair_id": "LCID/RIVN"
     },
     "AMAT_STOCK_PAIRS_TRADING_001": {
@@ -37,56 +37,56 @@
     },
     "MAR_STOCK_PAIRS_TRADING_001": {
         "symbol": "MAR",
-        "quantity": 0.0,
-        "avg_price": 0,
+        "quantity": 27.0,
+        "avg_price": 283.435,
         "strategy_id": "PAIRS_TRADING_001",
         "instrument_type": "STOCK",
-        "last_updated": "2024-12-20T15:45:03.262494-05:00",
+        "last_updated": "2024-12-23T15:46:05.219861-05:00",
         "pair_id": "MAR/HLT"
     },
     "HLT_STOCK_PAIRS_TRADING_001": {
         "symbol": "HLT",
-        "quantity": 0.0,
-        "avg_price": 0,
+        "quantity": -36.0,
+        "avg_price": 250.805,
         "strategy_id": "PAIRS_TRADING_001",
         "instrument_type": "STOCK",
-        "last_updated": "2024-12-20T15:45:03.239318-05:00",
+        "last_updated": "2024-12-23T15:46:05.931368-05:00",
         "pair_id": "MAR/HLT"
     },
     "ENPH_STOCK_PAIRS_TRADING_001": {
         "symbol": "ENPH",
-        "quantity": 49.0,
-        "avg_price": 70.809853,
+        "quantity": 0.0,
+        "avg_price": 0,
         "strategy_id": "PAIRS_TRADING_001",
         "instrument_type": "STOCK",
-        "last_updated": "2024-12-20T15:45:03.085179-05:00",
+        "last_updated": "2024-12-23T15:46:03.430280-05:00",
         "pair_id": "ENPH/SEDG"
     },
     "SEDG_STOCK_PAIRS_TRADING_001": {
         "symbol": "SEDG",
-        "quantity": -234.0,
-        "avg_price": 15.010188,
+        "quantity": 0.0,
+        "avg_price": 0,
         "strategy_id": "PAIRS_TRADING_001",
         "instrument_type": "STOCK",
-        "last_updated": "2024-12-20T15:45:03.244835-05:00",
+        "last_updated": "2024-12-23T15:46:04.317155-05:00",
         "pair_id": "ENPH/SEDG"
     },
     "S_STOCK_PAIRS_TRADING_001": {
         "symbol": "S",
-        "quantity": 153.0,
-        "avg_price": 22.305,
+        "quantity": 0.0,
+        "avg_price": 0,
         "strategy_id": "PAIRS_TRADING_001",
         "instrument_type": "STOCK",
-        "last_updated": "2024-12-20T15:45:03.354005-05:00",
+        "last_updated": "2024-12-23T15:46:06.819361-05:00",
         "pair_id": "S/CRWD"
     },
     "CRWD_STOCK_PAIRS_TRADING_001": {
         "symbol": "CRWD",
-        "quantity": -12.0,
-        "avg_price": 361.38,
+        "quantity": 0.0,
+        "avg_price": 0,
         "strategy_id": "PAIRS_TRADING_001",
         "instrument_type": "STOCK",
-        "last_updated": "2024-12-20T15:45:03.438527-05:00",
+        "last_updated": "2024-12-23T15:46:07.530605-05:00",
         "pair_id": "S/CRWD"
     }
 }

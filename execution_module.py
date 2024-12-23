@@ -52,9 +52,9 @@ class ExecutionModule:
         contract.secType = "OPT"
         contract.exchange = "SMART"
         contract.currency = "USD"
-        contract.lastTradeDateOrContractMonth = expiry
+        contract.lastTradeDateOrContractMonth = datetime.strptime(expiry, '%Y-%m-%d').strftime('%Y%m%d')
         contract.strike = strike
-        contract.right = "P" if option_type == "PUT" else "C"
+        contract.right = "C" if option_type.upper() == "CALL" else "P"
         contract.multiplier = "100"
         return contract
 

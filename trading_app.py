@@ -402,8 +402,8 @@ class TradingApp(EWrapper, EClient):
                     contract.symbol = underlying
                     contract.secType = "OPT"
                     contract.strike = float(strike)
-                    contract.lastTradeDateOrContractMonth = expiry
-                    contract.right = option_type
+                    contract.lastTradeDateOrContractMonth = datetime.strptime(expiry, '%Y-%m-%d').strftime('%Y%m%d')
+                    contract.right = "C" if option_type.upper() == "CALL" else "P"
                     contract.multiplier = "100"
                     
                 else:
