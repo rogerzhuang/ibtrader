@@ -8,9 +8,9 @@ from config import Config
 from datetime import datetime
 from logger import setup_logger
 
-logger = setup_logger('ExecutionModule')
+logger = setup_logger('PositionManager')
 
-class ExecutionModule:
+class PositionManager:
     def __init__(self):
         self.orders: Dict[int, Dict[str, Any]] = {}
         self.positions: Dict[str, Dict[str, Any]] = {}
@@ -37,56 +37,6 @@ class ExecutionModule:
             logger.debug("Saved positions to file")
         except Exception as e:
             logger.error(f"Error saving positions: {e}")
-
-    def create_stock_contract(self, symbol: str) -> Contract:
-        contract = Contract()
-        contract.symbol = symbol
-        contract.secType = "STK"
-        contract.exchange = "SMART"
-        contract.currency = "USD"
-        return contract
-    
-    def create_option_contract(self, symbol: str, strike: float, expiry: str, option_type: str) -> Contract:
-        contract = Contract()
-        contract.symbol = symbol
-        contract.secType = "OPT"
-        contract.exchange = "SMART"
-        contract.currency = "USD"
-        contract.lastTradeDateOrContractMonth = expiry
-        contract.strike = strike
-        contract.right = "P" if option_type == "PUT" else "C"
-        contract.multiplier = "100"
-        return contract
-
-    def place_order(self, signal: dict) -> tuple:
-        """Place a new order based on signal"""
-        try:
-            if signal['type'] == 'STOCK':
-                contract = self.create_stock_contract(signal['ticker'])
-            else:  # OPTION
-                contract = self.create_option_contract(
-                    signal['ticker'],
-                    signal['strike'],
-                    signal['expiry'],
-                    signal['option_type']
-                )
-            
-            order = Order()
-            order.action = signal['action']
-            order.totalQuantity = signal['quantity']
-            order.orderType = signal['order_type']
-            
-            # Add these specific settings for IBKR compatibility
-            order.eTradeOnly = False
-            order.firmQuoteOnly = False
-            order.tif = 'DAY'  # Time In Force
-            
-            logger.info(f"Created order: {signal}")
-            return contract, order
-            
-        except Exception as e:
-            logger.error(f"Error creating order: {e}")
-            return None, None
     
     def update_position(self, symbol: str, quantity: int, avg_price: float, instrument_type: str, strategy_id: str = None, **kwargs):
         """

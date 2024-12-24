@@ -1,7 +1,7 @@
 from datetime import datetime
 import requests
 import logging
-from .base_strategy import BaseStrategy
+from .strategy_base import BaseStrategy
 from signal_types import SignalResponse, PairTrade, OptionTrade, TradeLeg
 from logger import setup_logger
 
@@ -90,7 +90,7 @@ class PairsTradingStrategy(BaseStrategy):
             for pair_trade in signals.pairs_trades:
                 if pair_trade.action == "TRADE":
                     for leg in pair_trade.legs:
-                        current_position = self.execution_module.get_position(
+                        current_position = self.position_manager.get_position(
                             leg.ticker,
                             strategy_id=self.strategy_id,
                             instrument_type='STOCK'
@@ -108,7 +108,7 @@ class PairsTradingStrategy(BaseStrategy):
                                 'ticker': leg.ticker,
                                 'action': action,
                                 'quantity': abs(position_difference),
-                                'order_type': 'MKT',
+                                'execution_strategy': 'MARKET',
                                 'pair_id': pair_trade.pair,
                                 'strategy_id': self.strategy_id
                             })
@@ -120,7 +120,7 @@ class PairsTradingStrategy(BaseStrategy):
                 elif pair_trade.action == "SQUARE":
                     pair_symbols = pair_trade.pair.split('/')
                     for symbol in pair_symbols:
-                        current_position = self.execution_module.get_position(
+                        current_position = self.position_manager.get_position(
                             symbol,
                             strategy_id=self.strategy_id,
                             instrument_type='STOCK'
@@ -133,7 +133,7 @@ class PairsTradingStrategy(BaseStrategy):
                                 'ticker': symbol,
                                 'action': action,
                                 'quantity': abs(current_quantity),
-                                'order_type': 'MKT',
+                                'execution_strategy': 'MARKET',
                                 'pair_id': pair_trade.pair,
                                 'strategy_id': self.strategy_id
                             })
@@ -149,7 +149,7 @@ class PairsTradingStrategy(BaseStrategy):
                     'ticker': option_trade.contract.split()[0],
                     'action': option_trade.action,
                     'quantity': option_trade.contracts,
-                    'order_type': 'MKT',
+                    'execution_strategy': 'MARKET',
                     'strike': option_trade.strike,
                     'expiry': option_trade.expiry,
                     'option_type': option_trade.contract.split()[1],
