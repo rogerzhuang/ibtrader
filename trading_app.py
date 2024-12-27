@@ -138,8 +138,19 @@ class TradingApp(EWrapper, EClient):
             logger.debug(f"Received next valid order ID: {orderId}")
 
     def contractDetails(self, reqId: int, contractDetails):
-        """Handle contract details response"""
-        self.contract_details_queue.put(contractDetails)
+        """Handle contract details response including tick size"""
+        try:
+            symbol = self.reqId_to_symbol.get(reqId)
+            if symbol:
+                # Store tick size in data module
+                self.data_module.set_tick_size(symbol, contractDetails.minTick)
+                logger.info(f"Received tick size for {symbol}: {contractDetails.minTick}")
+            
+            # Put contract details in queue for other processing
+            self.contract_details_queue.put(contractDetails)
+            
+        except Exception as e:
+            logger.error(f"Error processing contract details: {e}")
 
     def contractDetailsEnd(self, reqId: int):
         """Mark end of contract details"""
@@ -442,7 +453,7 @@ class TradingApp(EWrapper, EClient):
         logger.info("Execution monitoring thread shutting down")
 
     def request_market_data(self, symbols: list):
-        """Request market data for multiple symbols"""
+        """Request market data and contract details for multiple symbols"""
         for symbol in symbols:
             try:
                 # Parse symbol to determine if it's an option
@@ -466,6 +477,9 @@ class TradingApp(EWrapper, EClient):
                         
                         underlying_req_id = len(self.reqId_to_symbol)
                         self.reqId_to_symbol[underlying_req_id] = underlying
+                        
+                        # Request contract details for underlying
+                        self.reqContractDetails(underlying_req_id, underlying_contract)
                         
                         self.reqMktData(
                             underlying_req_id,
@@ -503,6 +517,9 @@ class TradingApp(EWrapper, EClient):
                 # Store mapping
                 req_id = len(self.reqId_to_symbol)
                 self.reqId_to_symbol[req_id] = symbol
+                
+                # Request contract details first
+                self.reqContractDetails(req_id, contract)
                 
                 # Request real-time data
                 self.reqMktData(

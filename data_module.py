@@ -11,7 +11,19 @@ class DataModule:
     def __init__(self):
         self.streaming_data = {}   # Store real-time data by symbol
         self.data_lock = Lock()    # Thread safety for data access
+        self.tick_sizes = {}       # Store tick sizes by symbol
         
+    def set_tick_size(self, symbol: str, tick_size: float):
+        """Store tick size information for a symbol"""
+        with self.data_lock:
+            self.tick_sizes[symbol] = tick_size
+            logger.debug(f"Set tick size for {symbol}: {tick_size}")
+    
+    def get_tick_size(self, symbol: str) -> float:
+        """Get tick size for a symbol"""
+        with self.data_lock:
+            return self.tick_sizes.get(symbol)
+    
     def process_streaming_data(self, symbol: str, price: float, tick_type: str):
         """Process streaming data for both stocks and options"""
         with self.data_lock:

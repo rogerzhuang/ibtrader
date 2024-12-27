@@ -27,29 +27,49 @@ class DynamicLimitOrderStrategy(BaseExecutionStrategy):
         order.firmQuoteOnly = False
         order.tif = 'DAY'
         
-        # Get current market data for the actual instrument
+        # Get current market data and tick size for the instrument
         symbol = self._get_full_symbol()
         data = self.trading_app.data_module.streaming_data.get(symbol, {})
+        tick_size = self.trading_app.data_module.get_tick_size(symbol)
         
-        # Add validation and default pricing logic
+        if tick_size is None:
+            logger.error(f"No tick size available for {symbol}")
+            return None
+        
+        bid = data.get('bid')
+        ask = data.get('ask')
+        
         if self.signal['action'] == "BUY":
-            price = data.get('bid')
-            if price is None or price <= 0:
+            if bid is None or bid <= 0 or ask is None or ask <= 0:
                 price = data.get('last')  # Try last price as fallback
-            if price is None or price <= 0:
-                logger.error(f"No valid price data for {symbol} BUY order")
-                return None
-            order.lmtPrice = price
+                if price is None or price <= 0:
+                    logger.error(f"No valid price data for {symbol} BUY order")
+                    return None
+            else:
+                # Calculate mid price and round to nearest valid tick
+                mid_price = (bid + ask) / 2
+                ticks = round(mid_price / tick_size)
+                price = ticks * tick_size
+                # If rounded mid price is above ask, use bid instead
+                if price >= ask:
+                    price = bid
         else:  # SELL
-            price = data.get('ask')
-            if price is None or price <= 0:
+            if bid is None or bid <= 0 or ask is None or ask <= 0:
                 price = data.get('last')  # Try last price as fallback
-            if price is None or price <= 0:
-                logger.error(f"No valid price data for {symbol} SELL order")
-                return None
-            order.lmtPrice = price
+                if price is None or price <= 0:
+                    logger.error(f"No valid price data for {symbol} SELL order")
+                    return None
+            else:
+                # Calculate mid price and round to nearest valid tick
+                mid_price = (bid + ask) / 2
+                ticks = round(mid_price / tick_size)
+                price = ticks * tick_size
+                # If rounded mid price is below bid, use ask instead
+                if price <= bid:
+                    price = ask
         
-        logger.info(f"Creating {order.action} limit order for {symbol} at {order.lmtPrice}")
+        order.lmtPrice = price
+        logger.info(f"Creating {order.action} limit order for {symbol} at {order.lmtPrice} (tick size: {tick_size})")
         return order
         
     def check_and_update(self) -> None:
@@ -89,7 +109,6 @@ class DynamicLimitOrderStrategy(BaseExecutionStrategy):
         
         # Updated price adjustment logic
         if not self.converted_to_market and self.attempts < self.max_attempts:
-            # New: Check for significant partial fills
             if fill_info['has_partial_fill']:
                 filled_pct = fill_info['filled_quantity'] / self.signal['quantity']
                 
@@ -97,17 +116,36 @@ class DynamicLimitOrderStrategy(BaseExecutionStrategy):
                     logger.info(f"Significant partial fill ({filled_pct*100:.1f}%) - skipping price update")
                     return
                     
-            # Get latest market data for the actual instrument
+            # Get latest market data and tick size
             symbol = self._get_full_symbol()
             data = self.trading_app.data_module.streaming_data.get(symbol, {})
+            tick_size = self.trading_app.data_module.get_tick_size(symbol)
+            
+            if tick_size is None:
+                logger.warning(f"No tick size available for {symbol} - skipping price update")
+                return
+            
+            bid = data.get('bid')
+            ask = data.get('ask')
+            
+            if bid is None or ask is None:
+                logger.warning(f"Incomplete market data for {symbol} - skipping price update")
+                return
+            
+            # Calculate new price using mid price approach
+            mid_price = (bid + ask) / 2
+            ticks = round(mid_price / tick_size)
+            new_price = ticks * tick_size
             
             if self.signal['action'] == "BUY":
-                new_price = data.get('bid', 0)
-            else:
-                new_price = data.get('ask', 0)
+                if new_price >= ask:  # If rounded mid would be above ask
+                    new_price = bid
+            else:  # SELL
+                if new_price <= bid:  # If rounded mid would be below bid
+                    new_price = ask
             
             # Compare with current order's limit price
-            if self.current_order:  # Use stored IBKR Order object
+            if self.current_order:
                 current_price = self.current_order.lmtPrice
                 
                 if new_price != current_price:
