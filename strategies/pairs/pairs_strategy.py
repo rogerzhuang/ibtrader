@@ -1,8 +1,8 @@
 from datetime import datetime
 import requests
 import logging
-from .strategy_base import BaseStrategy
-from signal_types import SignalResponse, PairTrade, OptionTrade, TradeLeg
+from ..strategy_base import BaseStrategy
+from .pairs_signal_types import SignalResponse, PairTrade, OptionTrade, TradeLeg
 from logger import setup_logger
 
 logger = setup_logger('PairsTradingStrategy')
@@ -90,11 +90,18 @@ class PairsTradingStrategy(BaseStrategy):
             for pair_trade in signals.pairs_trades:
                 if pair_trade.action == "TRADE":
                     for leg in pair_trade.legs:
-                        current_position = self.position_manager.get_position(
+                        # Find position ID for this exact instrument
+                        position_id = self.position_manager.find_matching_position(
                             leg.ticker,
-                            strategy_id=self.strategy_id,
-                            instrument_type='STOCK'
+                            instrument_type='STOCK',
+                            strategy_id=self.strategy_id
                         )
+                        
+                        # Get current position directly from positions dict
+                        current_position = self.position_manager.positions.get(position_id, {
+                            'quantity': 0,
+                            'avg_price': 0
+                        })
                         current_quantity = current_position.get('quantity', 0)
                         
                         target_position = (-leg.quantity if leg.action == "SELL" 
@@ -120,30 +127,37 @@ class PairsTradingStrategy(BaseStrategy):
                 elif pair_trade.action == "SQUARE":
                     pair_symbols = pair_trade.pair.split('/')
                     for symbol in pair_symbols:
-                        current_position = self.position_manager.get_position(
+                        # Find position ID for this exact instrument
+                        position_id = self.position_manager.find_matching_position(
                             symbol,
-                            strategy_id=self.strategy_id,
-                            instrument_type='STOCK'
+                            instrument_type='STOCK',
+                            strategy_id=self.strategy_id
                         )
-                        current_quantity = current_position.get('quantity', 0)
-                        if current_quantity != 0:
-                            action = 'SELL' if current_quantity > 0 else 'BUY'
-                            self.signal_queue.put({
-                                'type': 'STOCK',
-                                'ticker': symbol,
-                                'action': action,
-                                'quantity': abs(current_quantity),
-                                'execution_strategy': 'MARKET',
-                                'pair_id': pair_trade.pair,
-                                'strategy_id': self.strategy_id
-                            })
-                            logger.info(
-                                f"[PAIRS:{self.strategy_id}] Closing position: "
-                                f"{symbol} {action} {abs(current_quantity)}"
-                            )
+                        
+                        if position_id:  # Only act if position exists
+                            # Get current position directly from positions dict
+                            current_position = self.position_manager.positions.get(position_id)
+                            current_quantity = current_position.get('quantity', 0)
+                            
+                            if current_quantity != 0:
+                                action = 'SELL' if current_quantity > 0 else 'BUY'
+                                self.signal_queue.put({
+                                    'type': 'STOCK',
+                                    'ticker': symbol,
+                                    'action': action,
+                                    'quantity': abs(current_quantity),
+                                    'execution_strategy': 'MARKET',
+                                    'pair_id': pair_trade.pair,
+                                    'strategy_id': self.strategy_id
+                                })
+                                logger.info(
+                                    f"[PAIRS:{self.strategy_id}] Closing position: "
+                                    f"{symbol} {action} {abs(current_quantity)}"
+                                )
 
             # Process options trades
             for option_trade in signals.options_trades:
+                # Create signal with all option details
                 self.signal_queue.put({
                     'type': 'OPTION',
                     'ticker': option_trade.contract.split()[0],

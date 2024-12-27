@@ -9,7 +9,7 @@ class Config:
     CLIENT_ID = 1025
     
     # Trading settings
-    TOTAL_CAPITAL = 100000
+    TOTAL_CAPITAL = 300000
     
     # Timezone settings
     TIMEZONE = pytz.timezone('US/Eastern')
@@ -21,7 +21,8 @@ class Config:
     # Data storage
     DATA_DIR = Path("data")
     POSITIONS_FILE = DATA_DIR / "positions.json"
-    
+    ORDERS_FILE = DATA_DIR / "orders.json"
+
     # Strategy configurations
     STRATEGIES = [
         {
@@ -29,18 +30,18 @@ class Config:
             'strategy_id': 'PAIRS_TRADING_001',
             'signal_base_url': "http://127.0.0.1:5000/pairtrade/signals",
             'signal_check_hour': 15,
-            'signal_check_minute': 55,
-            'capital_allocation_pct': 1.0,  
+            'signal_check_minute': 50,
+            'capital_allocation_pct': 0.3333333333,  
             'enabled': True,
             'timezone': pytz.timezone('US/Eastern'),
         },
         {
-            'type': 'ZACKS',
-            'strategy_id': 'ZACKS_TRADING_001',
-            'api_key': 'your_zacks_api_key',
-            'signal_check_hour': 9,
-            'signal_check_minute': 30,
-            'capital_allocation_pct': 0.0,  
+            'type': 'OPTION_WRITE',
+            'strategy_id': 'OPTION_WRITE_TRADING_001',
+            'signal_base_url': "http://127.0.0.1:5000/optionwrite/signals",
+            'signal_check_hour': 12,
+            'signal_check_minute': 45,
+            'capital_allocation_pct': 0.6666666666,  
             'enabled': True,
             'timezone': pytz.timezone('US/Eastern'),
         }
@@ -57,24 +58,11 @@ class Config:
                 strategy_config = dict(strategy)
                 # Calculate actual capital allocation
                 strategy_config['capital_allocation'] = (
-                    cls.TOTAL_CAPITAL * strategy['capital_allocation_pct']
+                    int(cls.TOTAL_CAPITAL * strategy['capital_allocation_pct'])
                 )
                 enabled_strategies.append(strategy_config)
         return enabled_strategies
     
-    @classmethod
-    def get_strategy_config(cls, strategy_id: str) -> Dict:
-        """Get configuration for a specific strategy with calculated capital"""
-        for strategy in cls.STRATEGIES:
-            if strategy['strategy_id'] == strategy_id:
-                # Create a copy of the strategy config
-                strategy_config = dict(strategy)
-                # Calculate actual capital allocation
-                strategy_config['capital_allocation'] = (
-                    cls.TOTAL_CAPITAL * strategy['capital_allocation_pct']
-                )
-                return strategy_config
-        raise ValueError(f"Strategy {strategy_id} not found in configuration")
     
     @classmethod
     def validate_capital_allocation(cls) -> bool:

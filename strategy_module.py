@@ -1,6 +1,5 @@
 from typing import List, Dict
-from strategies.strategy_base import BaseStrategy
-from strategies.pairs_strategy import PairsTradingStrategy
+from strategies import BaseStrategy, PairsTradingStrategy, OptionWriteStrategy
 import logging
 from logger import setup_logger
 
@@ -16,6 +15,7 @@ class StrategyModule:
         """Initialize strategies based on configuration"""
         strategy_classes = {
             'PAIRS': PairsTradingStrategy,
+            'OPTION_WRITE': OptionWriteStrategy,
             # Add more strategy classes here
         }
         

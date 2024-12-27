@@ -8,9 +8,8 @@ logger = setup_logger('MarketOrders')
 class IOCMarketOrderStrategy(BaseExecutionStrategy):
     """Market order strategy that uses IOC to prevent unfilled orders from hanging"""
     
-    def __init__(self, trading_app, signal: dict, timeout_seconds: int = 30):
+    def __init__(self, trading_app, signal: dict):
         super().__init__(trading_app, signal)
-        self.timeout_seconds = timeout_seconds
         
     def create_order(self) -> Order:
         order = Order()
@@ -21,9 +20,9 @@ class IOCMarketOrderStrategy(BaseExecutionStrategy):
         order.eTradeOnly = False
         order.firmQuoteOnly = False
         return order
-        
+
     def check_and_update(self) -> None:
-        """Check if order should be cancelled due to timeout"""
-        if self.status == "ACTIVE" and self.timeout_exceeded(self.timeout_seconds):
-            logger.info(f"Order {self.order_id} exceeded timeout - cancelling")
-            self.trading_app.cancelOrder(self.order_id)
+        """
+        No updates needed for IOC market orders as they are automatically cancelled if unfilled
+        """
+        pass

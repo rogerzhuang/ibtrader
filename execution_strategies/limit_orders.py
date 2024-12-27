@@ -15,8 +15,6 @@ class DynamicLimitOrderStrategy(BaseExecutionStrategy):
         self.attempts = 0
         self.max_attempts = 3
         self.converted_to_market = False
-        self.market_conversion_time = None
-        self.market_order_timeout = 10
         self.partial_fill_timeout_multiplier = 1.5  # Extend timeout by 50% for partial fills
         self.significant_fill_threshold = 0.25      # 25% fill considered significant
 
@@ -29,17 +27,29 @@ class DynamicLimitOrderStrategy(BaseExecutionStrategy):
         order.firmQuoteOnly = False
         order.tif = 'DAY'
         
-        # Get current market data
-        symbol = self.signal['ticker']
+        # Get current market data for the actual instrument
+        symbol = self._get_full_symbol()
         data = self.trading_app.data_module.streaming_data.get(symbol, {})
         
+        # Add validation and default pricing logic
         if self.signal['action'] == "BUY":
-            # Place limit at current bid for buys
-            order.lmtPrice = data.get('bid', 0)
-        else:
-            # Place limit at current ask for sells
-            order.lmtPrice = data.get('ask', 0)
-            
+            price = data.get('bid')
+            if price is None or price <= 0:
+                price = data.get('last')  # Try last price as fallback
+            if price is None or price <= 0:
+                logger.error(f"No valid price data for {symbol} BUY order")
+                return None
+            order.lmtPrice = price
+        else:  # SELL
+            price = data.get('ask')
+            if price is None or price <= 0:
+                price = data.get('last')  # Try last price as fallback
+            if price is None or price <= 0:
+                logger.error(f"No valid price data for {symbol} SELL order")
+                return None
+            order.lmtPrice = price
+        
+        logger.info(f"Creating {order.action} limit order for {symbol} at {order.lmtPrice}")
         return order
         
     def check_and_update(self) -> None:
@@ -47,17 +57,6 @@ class DynamicLimitOrderStrategy(BaseExecutionStrategy):
         if self.status != "ACTIVE" or not self.order_id:
             return
             
-        # New: Check if we need to cancel a dangling market order
-        if self.converted_to_market and self.market_conversion_time:
-            time_since_market = (datetime.now() - self.market_conversion_time).total_seconds()
-            if time_since_market > self.market_order_timeout:
-                logger.warning(
-                    f"Market IOC order {self.order_id} still active after "
-                    f"{time_since_market:.1f}s - cancelling"
-                )
-                self.trading_app.cancelOrder(self.order_id)
-                return
-
         # New: Get fill information
         fill_info = self.get_fill_info()
         
@@ -76,7 +75,6 @@ class DynamicLimitOrderStrategy(BaseExecutionStrategy):
                     'lmtPrice': 0.0
                 })
                 self.converted_to_market = True
-                self.market_conversion_time = datetime.now()
                 return
         else:
             if not self.converted_to_market and self.timeout_exceeded(self.timeout_seconds):
@@ -87,7 +85,6 @@ class DynamicLimitOrderStrategy(BaseExecutionStrategy):
                     'lmtPrice': 0.0
                 })
                 self.converted_to_market = True
-                self.market_conversion_time = datetime.now()
                 return
         
         # Updated price adjustment logic
@@ -100,8 +97,8 @@ class DynamicLimitOrderStrategy(BaseExecutionStrategy):
                     logger.info(f"Significant partial fill ({filled_pct*100:.1f}%) - skipping price update")
                     return
                     
-            # Get latest market data
-            symbol = self.signal['ticker']
+            # Get latest market data for the actual instrument
+            symbol = self._get_full_symbol()
             data = self.trading_app.data_module.streaming_data.get(symbol, {})
             
             if self.signal['action'] == "BUY":
@@ -121,3 +118,10 @@ class DynamicLimitOrderStrategy(BaseExecutionStrategy):
                     })
                     
                     self.attempts += 1
+
+    def _get_full_symbol(self) -> str:
+        """Helper method to get the full symbol including option details if applicable"""
+        if self.signal.get('type') == 'OPTION':
+            # Construct option symbol
+            return f"{self.signal['ticker']}_{self.signal['strike']}_{self.signal['expiry']}_{self.signal['option_type']}"
+        return self.signal['ticker']
