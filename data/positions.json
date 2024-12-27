@@ -1,5 +1,5 @@
 {
-    "LCID_STOCK_PAIRS_TRADING_001": {
+    "550e8400-e29b-41d4-a716-446655440000": {
         "symbol": "LCID",
         "quantity": 0.0,
         "avg_price": 0,
@@ -8,7 +8,7 @@
         "last_updated": "2024-12-23T15:46:01.971754-05:00",
         "pair_id": "LCID/RIVN"
     },
-    "RIVN_STOCK_PAIRS_TRADING_001": {
+    "6ba7b810-9dad-11d1-80b4-00c04fd430c8": {
         "symbol": "RIVN",
         "quantity": 0.0,
         "avg_price": 0,
@@ -17,7 +17,7 @@
         "last_updated": "2024-12-23T15:46:03.064134-05:00",
         "pair_id": "LCID/RIVN"
     },
-    "AMAT_STOCK_PAIRS_TRADING_001": {
+    "7ba7b810-9dad-11d1-80b4-00c04fd430c8": {
         "symbol": "AMAT",
         "quantity": 0.0,
         "avg_price": 0,
@@ -26,7 +26,7 @@
         "last_updated": "2024-12-20T15:45:02.645086-05:00",
         "pair_id": "AMAT/LRCX"
     },
-    "LRCX_STOCK_PAIRS_TRADING_001": {
+    "8ba7b810-9dad-11d1-80b4-00c04fd430c8": {
         "symbol": "LRCX",
         "quantity": 0.0,
         "avg_price": 0,
@@ -35,7 +35,7 @@
         "last_updated": "2024-12-20T15:45:02.884011-05:00",
         "pair_id": "AMAT/LRCX"
     },
-    "MAR_STOCK_PAIRS_TRADING_001": {
+    "9ba7b810-9dad-11d1-80b4-00c04fd430c8": {
         "symbol": "MAR",
         "quantity": 27.0,
         "avg_price": 283.435,
@@ -44,7 +44,7 @@
         "last_updated": "2024-12-23T15:46:05.219861-05:00",
         "pair_id": "MAR/HLT"
     },
-    "HLT_STOCK_PAIRS_TRADING_001": {
+    "aba7b810-9dad-11d1-80b4-00c04fd430c8": {
         "symbol": "HLT",
         "quantity": -36.0,
         "avg_price": 250.805,
@@ -53,7 +53,7 @@
         "last_updated": "2024-12-23T15:46:05.931368-05:00",
         "pair_id": "MAR/HLT"
     },
-    "ENPH_STOCK_PAIRS_TRADING_001": {
+    "bba7b810-9dad-11d1-80b4-00c04fd430c8": {
         "symbol": "ENPH",
         "quantity": 0.0,
         "avg_price": 0,
@@ -62,7 +62,7 @@
         "last_updated": "2024-12-23T15:46:03.430280-05:00",
         "pair_id": "ENPH/SEDG"
     },
-    "SEDG_STOCK_PAIRS_TRADING_001": {
+    "cba7b810-9dad-11d1-80b4-00c04fd430c8": {
         "symbol": "SEDG",
         "quantity": 0.0,
         "avg_price": 0,
@@ -71,7 +71,7 @@
         "last_updated": "2024-12-23T15:46:04.317155-05:00",
         "pair_id": "ENPH/SEDG"
     },
-    "S_STOCK_PAIRS_TRADING_001": {
+    "dba7b810-9dad-11d1-80b4-00c04fd430c8": {
         "symbol": "S",
         "quantity": 0.0,
         "avg_price": 0,
@@ -80,7 +80,7 @@
         "last_updated": "2024-12-23T15:46:06.819361-05:00",
         "pair_id": "S/CRWD"
     },
-    "CRWD_STOCK_PAIRS_TRADING_001": {
+    "eba7b810-9dad-11d1-80b4-00c04fd430c8": {
         "symbol": "CRWD",
         "quantity": 0.0,
         "avg_price": 0,
@@ -88,5 +88,49 @@
         "instrument_type": "STOCK",
         "last_updated": "2024-12-23T15:46:07.530605-05:00",
         "pair_id": "S/CRWD"
+    },
+    "bb0bf7fd-f00d-4a1a-8ae0-2a143ad1d2d0": {
+        "symbol": "XPEV",
+        "quantity": -8.0,
+        "avg_price": 0.04,
+        "strategy_id": "OPTION_WRITE_TRADING_001",
+        "instrument_type": "OPTION",
+        "last_updated": "2024-12-27T10:49:06.123021-05:00",
+        "strike": 11.5,
+        "expiry": "2025-01-03",
+        "option_type": "PUT"
+    },
+    "030eaf2c-9843-4c52-8d42-63c3275d4b1a": {
+        "symbol": "MRNA",
+        "quantity": -2.0,
+        "avg_price": 0.15,
+        "strategy_id": "OPTION_WRITE_TRADING_001",
+        "instrument_type": "OPTION",
+        "last_updated": "2024-12-27T10:49:07.054649-05:00",
+        "strike": 36.0,
+        "expiry": "2025-01-03",
+        "option_type": "PUT"
+    },
+    "0b70a131-472f-410a-a983-d51e2d28cea9": {
+        "symbol": "VST",
+        "quantity": -1.0,
+        "avg_price": 0.31,
+        "strategy_id": "OPTION_WRITE_TRADING_001",
+        "instrument_type": "OPTION",
+        "last_updated": "2024-12-27T10:49:09.019870-05:00",
+        "strike": 123.0,
+        "expiry": "2025-01-03",
+        "option_type": "PUT"
+    },
+    "ec9d8fb8-d0e9-4684-be66-ffa0a4392878": {
+        "symbol": "SMCI",
+        "quantity": -3.0,
+        "avg_price": 0.31,
+        "strategy_id": "OPTION_WRITE_TRADING_001",
+        "instrument_type": "OPTION",
+        "last_updated": "2024-12-27T12:46:04.335264-05:00",
+        "strike": 28.5,
+        "expiry": "2025-01-03",
+        "option_type": "PUT"
     }
 }

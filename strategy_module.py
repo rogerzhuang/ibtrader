@@ -1,21 +1,21 @@
 from typing import List, Dict
-from strategies.base_strategy import BaseStrategy
-from strategies.pairs_trading_strategy import PairsTradingStrategy
+from strategies import BaseStrategy, PairsTradingStrategy, OptionWriteStrategy
 import logging
 from logger import setup_logger
 
 logger = setup_logger('StrategyModule')
 
 class StrategyModule:
-    def __init__(self, data_module, execution_module):
+    def __init__(self, data_module, position_manager):
         self.data_module = data_module
-        self.execution_module = execution_module
+        self.position_manager = position_manager
         self.strategies: Dict[str, BaseStrategy] = {}
         
     def initialize_strategies(self, strategy_configs: List[Dict]):
         """Initialize strategies based on configuration"""
         strategy_classes = {
             'PAIRS': PairsTradingStrategy,
+            'OPTION_WRITE': OptionWriteStrategy,
             # Add more strategy classes here
         }
         
@@ -24,7 +24,7 @@ class StrategyModule:
             if strategy_type in strategy_classes:
                 strategy = strategy_classes[strategy_type](
                     self.data_module,
-                    self.execution_module,
+                    self.position_manager,
                     config
                 )
                 self.strategies[config['strategy_id']] = strategy

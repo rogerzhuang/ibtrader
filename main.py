@@ -58,6 +58,11 @@ def main():
         signal_thread.start()
         logger.info("Started signal processing thread")
         
+        # Start the execution monitor thread
+        execution_monitor = threading.Thread(target=app.monitor_executions)
+        execution_monitor.start()
+        logger.info("Started execution monitor thread")
+        
         # Monitor threads and app status
         try:
             while True:
@@ -80,17 +85,18 @@ def main():
             app.shutdown()
             logger.info("Disconnected from TWS")
             
-            # Wait for client thread to finish
-            logger.info("Waiting for client thread to finish...")
-            client_thread.join(timeout=5)
-            if client_thread.is_alive():
-                logger.warning("Client thread did not shut down cleanly")
-                
-            # Wait for signal thread to finish    
-            logger.info("Waiting for signal thread to finish...")
-            signal_thread.join(timeout=5)
-            if signal_thread.is_alive():
-                logger.warning("Signal thread did not shut down cleanly")
+            # Wait for all threads to finish
+            threads = [
+                ("client thread", client_thread),
+                ("signal thread", signal_thread),
+                ("execution monitor thread", execution_monitor)
+            ]
+            
+            for thread_name, thread in threads:
+                logger.info(f"Waiting for {thread_name} to finish...")
+                thread.join(timeout=5)
+                if thread.is_alive():
+                    logger.warning(f"{thread_name.capitalize()} did not shut down cleanly")
             
             logger.info("Threads terminated")
             

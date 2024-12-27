@@ -3,9 +3,9 @@ from typing import Dict, Any
 from queue import Queue
 
 class BaseStrategy(ABC):
-    def __init__(self, data_module, execution_module, strategy_config: Dict[str, Any]):
+    def __init__(self, data_module, position_manager, strategy_config: Dict[str, Any]):
         self.data_module = data_module
-        self.execution_module = execution_module
+        self.position_manager = position_manager
         self.strategy_config = strategy_config
         self.signal_queue = Queue()
         self.last_signal_check = None

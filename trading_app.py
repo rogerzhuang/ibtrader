@@ -17,9 +17,10 @@ from ibapi.order_state import OrderState
 
 from data_module import DataModule
 from strategy_module import StrategyModule
-from execution_module import ExecutionModule
+from position_manager import PositionManager
 from config import Config
 from logger import setup_logger
+from execution_strategies import create_execution_strategy
 
 logger = setup_logger('TradingApp')
 
@@ -27,8 +28,8 @@ class TradingApp(EWrapper, EClient):
     def __init__(self):
         EClient.__init__(self, self)
         self.data_module = DataModule()
-        self.execution_module = ExecutionModule()
-        self.strategy_module = StrategyModule(self.data_module, self.execution_module)
+        self.position_manager = PositionManager()
+        self.strategy_module = StrategyModule(self.data_module, self.position_manager)
         
         # Initialize tracking variables
         self.next_order_id = None
@@ -40,6 +41,7 @@ class TradingApp(EWrapper, EClient):
         
         # Keep only the order ID lock - remove connection_lock
         self.lock = Lock()  # Used for next_order_id synchronization
+        self.execution_lock = Lock()  # New lock for execution tracking
         
         # Validate capital allocation
         Config.validate_capital_allocation()
@@ -60,6 +62,10 @@ class TradingApp(EWrapper, EClient):
 
         # Add daily cleanup tracking
         self.last_cleanup_date = None
+
+        # Add execution strategy tracking
+        self.active_executions = {}  # order_id -> execution_strategy
+        self.execution_check_interval = 1  # Check executions every second
     
     def connect_and_wait(self) -> bool:
         """Attempt to connect to TWS
@@ -165,71 +171,118 @@ class TradingApp(EWrapper, EClient):
             remaining: float, avgFillPrice: float, permId: int,
             parentId: int, lastFillPrice: float, clientId: int,
             whyHeld: str, mktCapPrice: float):
-        """Handle order status updates"""
+        """Handle order status updates including partial fills"""
         try:
-            logger.info(f"Order {orderId} status: {status}")
-            if status == "Filled":
-                # Get order info
-                order = self.execution_module.orders.get(orderId)
-                logger.debug(f"Looking for order {orderId}, found: {order}")
+            logger.info(f"Order {orderId} status: {status} - Filled: {filled}, Remaining: {remaining}")
+            
+            # Add execution strategy status processing
+            with self.execution_lock:  # Use the same lock for the entire order processing
+                execution_strategy = self.active_executions.get(orderId)
+                if execution_strategy:
+                    execution_strategy.process_order_status(
+                        status, filled, remaining, avgFillPrice
+                    )
                 
-                if order and not order.get('fill_processed'):  # Add check for fill_processed flag
-                    symbol = order['symbol']
-                    strategy_id = order.get('strategy_id')
-                    instrument_type = order['instrument_type']
-                    current_position = self.execution_module.get_position(
-                        symbol, 
-                        strategy_id,
-                        instrument_type=instrument_type
-                    )
-                    logger.debug(f"Current position: {current_position}")
+                # Process fills (both partial and complete)
+                if filled > 0:  # Any fill amount
+                    # Get order info
+                    order = self.position_manager.orders.get(orderId)
+                    logger.debug(f"Looking for order {orderId}, found: {order}")
                     
-                    # Calculate position updates
-                    filled_quantity = filled if order['action'] == 'BUY' else -filled
-                    current_quantity = current_position.get('quantity', 0)
-                    current_avg_price = current_position.get('avg_price', 0)
-                    new_quantity = current_quantity + filled_quantity
-                    
-                    if new_quantity != 0:
-                        if current_quantity * new_quantity > 0:  # Same direction
-                            if abs(new_quantity) > abs(current_quantity):  # Adding to position
-                                # Weighted average of old and new
-                                new_avg_price = ((abs(current_quantity) * current_avg_price) + 
-                                                (abs(filled_quantity) * avgFillPrice)) / abs(new_quantity)
-                            else:  # Reducing position
-                                # Keep original average price
-                                new_avg_price = current_avg_price
-                        else:  # Direction changed (crossed zero)
-                            # Always use new fill price when crossing zero
-                            new_avg_price = avgFillPrice
-                    else:  # Position closed
-                        new_avg_price = 0
-                    
-                    # Prepare position update with additional information
-                    update_info = {
-                        'pair_id': order.get('pair_id')
-                    }
-
-                    # Add instrument-specific details
-                    if instrument_type == 'OPTION':
-                        update_info.update({
-                            'strike': order['strike'],
-                            'expiry': order['expiry'],
-                            'option_type': order['option_type']
-                        })
-                    
-                    self.execution_module.update_position(
-                        symbol,
-                        new_quantity,
-                        new_avg_price,
-                        instrument_type,
-                        strategy_id,
-                        **update_info
-                    )
-                    
-                    # Mark order as processed
-                    order['fill_processed'] = True
+                    if order:
+                        # Track last processed fill to handle only new fills
+                        last_processed_fill = order.get('last_processed_fill', 0)
+                        new_fill_amount = filled - last_processed_fill
                         
+                        if new_fill_amount > 0:  # Only process if there's new fill amount
+                            position_id = order['position_id']
+                            # Get current position directly using position_id
+                            current_position = self.position_manager.positions.get(position_id, {
+                                'quantity': 0,
+                                'avg_price': 0
+                            })
+                            
+                            logger.debug(
+                                f"Processing position update for position_id {position_id} - "
+                                f"Current: {current_position.get('quantity', 0)} @ "
+                                f"{current_position.get('avg_price', 0)}"
+                            )
+                            
+                            # Calculate position updates
+                            filled_quantity = (
+                                new_fill_amount if order['action'] == 'BUY' 
+                                else -new_fill_amount
+                            )
+                            current_quantity = current_position.get('quantity', 0)
+                            current_avg_price = current_position.get('avg_price', 0)
+                            new_quantity = current_quantity + filled_quantity
+                            
+                            if new_quantity != 0:
+                                if current_quantity * new_quantity > 0:  # Same direction
+                                    if abs(new_quantity) > abs(current_quantity):  # Adding to position
+                                        # Weighted average of old and new
+                                        new_avg_price = (
+                                            (abs(current_quantity) * current_avg_price) + 
+                                            (abs(filled_quantity) * lastFillPrice)
+                                        ) / abs(new_quantity)
+                                    else:  # Reducing position
+                                        # Keep original average price
+                                        new_avg_price = current_avg_price
+                                else:  # Direction changed (crossed zero)
+                                    # Use new fill price when crossing zero
+                                    new_avg_price = lastFillPrice
+                            else:  # Position closed
+                                new_avg_price = 0
+                            
+                            # Add debug log here
+                            # logger.debug(
+                            #     f"Calculated new position for {order['symbol']}: "
+                            #     f"Quantity {new_quantity} @ {new_avg_price} "
+                            #     f"(Fill: {filled_quantity} @ {lastFillPrice})"
+                            # )
+                            
+                            # Prepare position update with additional information
+                            update_info = {
+                                'pair_id': order.get('pair_id')
+                            }
+
+                            # Add instrument-specific details
+                            if order['instrument_type'] == 'OPTION':
+                                update_info.update({
+                                    'strike': order['strike'],
+                                    'expiry': order['expiry'],
+                                    'option_type': order['option_type']
+                                })
+                            elif order['instrument_type'] == 'FUTURE':
+                                update_info.update({
+                                    'expiry': order['expiry']
+                                })
+                            
+                            # Update position
+                            self.position_manager.update_position(
+                                order['symbol'],
+                                new_quantity,
+                                new_avg_price,
+                                order['instrument_type'],
+                                order.get('strategy_id'),
+                                position_id=position_id,
+                                **update_info
+                            )
+                            
+                            # Update last processed fill
+                            order['last_processed_fill'] = filled
+                            
+                            # Mark order as completed if fully filled
+                            if remaining == 0:
+                                order['fill_processed'] = True
+                                
+                            # Update order info
+                            updates = {
+                                'last_processed_fill': filled,
+                                'fill_processed': remaining == 0
+                            }
+                            self.position_manager.update_order(orderId, updates)
+
         except Exception as e:
             logger.error(f"Error processing order status: {e}")
 
@@ -249,14 +302,31 @@ class TradingApp(EWrapper, EClient):
         )
 
     def wait_for_market_data(self, symbol: str) -> bool:
-        """Wait for market data to be ready for a symbol
-        Returns True if market data is ready, False if timeout
+        """Wait for market data to be ready for a symbol and has valid prices
+        Returns True if market data is ready with valid prices, False if timeout
         """
         start_time = time.time()
         while time.time() - start_time < self.market_data_timeout:
+            # Check both market data ready flag and actual price data
             if self.market_data_ready.get(symbol, False):
-                return True
+                data = self.data_module.streaming_data.get(symbol, {})
+                # For SELL orders we need ask price, for BUY orders we need bid price
+                has_valid_prices = (
+                    data.get('bid') is not None and 
+                    data.get('ask') is not None and
+                    data.get('last') is not None
+                )
+                if has_valid_prices:
+                    logger.info(f"Market data ready for {symbol} with valid prices: {data}")
+                    return True
             time.sleep(0.1)
+        
+        # Log what data we actually have when timeout occurs
+        data = self.data_module.streaming_data.get(symbol, {})
+        logger.warning(
+            f"Timeout waiting for market data for {symbol}. "
+            f"Current data: bid={data.get('bid')}, ask={data.get('ask')}, last={data.get('last')}"
+        )
         return False
 
     def _perform_daily_cleanup(self) -> None:
@@ -297,7 +367,7 @@ class TradingApp(EWrapper, EClient):
                     else:
                         symbol = signal['ticker']
                     
-                    logger.info(f"Processing signal for {symbol}: {signal['action']} {signal['quantity']} @ {signal['order_type']}")
+                    logger.info(f"Processing signal for {symbol} [{signal['type']}] [Strategy: {signal['strategy_id']}] - {signal['action']} {signal['quantity']}")
                     
                     # Request market data subscription if not already subscribed
                     self.request_market_data([symbol])
@@ -308,46 +378,28 @@ class TradingApp(EWrapper, EClient):
                         signal = self.strategy_module.get_next_signal()
                         continue
                     
-                    # Rest of the existing process_signals code...
                     while not self.connected:
                         logger.warning("Not connected to TWS. Waiting to place order...")
                         time.sleep(5)
 
-                    contract, order = self.execution_module.place_order(signal)
+                    # Create order info first
+                    order_info = self.position_manager.create_order_info(signal)
                     
-                    if self.next_order_id and contract and order:
-                        with self.lock:
-                            current_order_id = self.next_order_id
-                            self.next_order_id += 1
+                    # Create and place order
+                    execution_strategy = create_execution_strategy(self, signal)
+                    contract = execution_strategy.create_contract()
+                    order = execution_strategy.create_order()
+
+                    if contract and order:
+                        execution_strategy.place_order(contract, order)
                         
-                        self.placeOrder(current_order_id, contract, order)
+                        # Track the execution strategy
+                        with self.execution_lock:
+                            self.active_executions[execution_strategy.order_id] = execution_strategy
                         
-                        # Store generic order information
-                        order_info = {
-                            'symbol': signal['ticker'],
-                            'action': signal['action'],
-                            'quantity': signal['quantity'],
-                            'order_type': signal['order_type'],
-                            'strategy_id': signal['strategy_id'],
-                            'instrument_type': signal['type'],  # 'STOCK' or 'OPTION'
-                            'timestamp': datetime.now(Config.TIMEZONE).isoformat(),
-                            'fill_processed': False
-                        }
-                        
-                        # Add optional fields based on order type
-                        if signal['type'] == 'OPTION':
-                            order_info.update({
-                                'strike': signal['strike'],
-                                'expiry': signal['expiry'],
-                                'option_type': signal['option_type']
-                            })
-                        
-                        # Add strategy-specific fields if present
-                        if signal.get('pair_id'):
-                            order_info['pair_id'] = signal['pair_id']
-                        
-                        self.execution_module.orders[current_order_id] = order_info
-                        logger.info(f"Placed order {current_order_id}: {order_info}")
+                        # Store order info with position ID
+                        self.position_manager.update_order(execution_strategy.order_id, order_info)
+                        logger.info(f"Placed order {execution_strategy.order_id}: {order_info} Position ID: {order_info['position_id']}")
                     else:
                         logger.error(f"Failed to create order for signal: {signal}")
 
@@ -359,6 +411,35 @@ class TradingApp(EWrapper, EClient):
             time.sleep(1)
         
         logger.info("Signal processing thread shutting down")
+
+    def monitor_executions(self):
+        """Monitor and update active execution strategies"""
+        while self.running:
+            try:
+                # Make a copy to avoid modification during iteration
+                with self.execution_lock:
+                    active_executions = dict(self.active_executions)
+                
+                # Check each active execution strategy
+                for order_id, strategy in active_executions.items():
+                    try:
+                        # Check and update the strategy
+                        strategy.check_and_update()
+                        
+                        # Remove completed strategies
+                        if strategy.is_complete():
+                            with self.execution_lock:
+                                self.active_executions.pop(order_id, None)
+                                
+                    except Exception as e:
+                        logger.error(f"Error checking execution strategy for order {order_id}: {e}")
+                
+                time.sleep(self.execution_check_interval)
+                
+            except Exception as e:
+                logger.error(f"Error in execution monitor: {e}")
+        
+        logger.info("Execution monitoring thread shutting down")
 
     def request_market_data(self, symbols: list):
         """Request market data for multiple symbols"""
