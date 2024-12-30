@@ -9,7 +9,7 @@ class Config:
     CLIENT_ID = 1025
     
     # Trading settings
-    TOTAL_CAPITAL = 300000
+    TOTAL_CAPITAL = 500000
     
     # Timezone settings
     TIMEZONE = pytz.timezone('US/Eastern')
@@ -28,20 +28,30 @@ class Config:
         {
             'type': 'PAIRS',
             'strategy_id': 'PAIRS_TRADING_001',
-            'signal_base_url': "http://127.0.0.1:5000/pairtrade/signals",
+            'signal_base_url': "http://ec2-44-231-211-145.us-west-2.compute.amazonaws.com/pairs/signals",
             'signal_check_hour': 15,
-            'signal_check_minute': 50,
-            'capital_allocation_pct': 0.3333333333,  
+            'signal_check_minute': 55,
+            'capital_allocation_pct': 0.2,
             'enabled': True,
             'timezone': pytz.timezone('US/Eastern'),
         },
         {
             'type': 'OPTION_WRITE',
             'strategy_id': 'OPTION_WRITE_TRADING_001',
-            'signal_base_url': "http://127.0.0.1:5000/optionwrite/signals",
-            'signal_check_hour': 12,
-            'signal_check_minute': 45,
-            'capital_allocation_pct': 0.6666666666,  
+            'signal_base_url': "http://ec2-44-231-211-145.us-west-2.compute.amazonaws.com/options/signals/1",
+            'signal_check_hour': 13,
+            'signal_check_minute': 0,
+            'capital_allocation_pct': 0.4,
+            'enabled': True,
+            'timezone': pytz.timezone('US/Eastern'),
+        },
+        {
+            'type': 'OPTION_WRITE',
+            'strategy_id': 'OPTION_WRITE_TRADING_002',
+            'signal_base_url': "http://ec2-44-231-211-145.us-west-2.compute.amazonaws.com/options/signals/2",
+            'signal_check_hour': 9,
+            'signal_check_minute': 31,
+            'capital_allocation_pct': 0.4,
             'enabled': True,
             'timezone': pytz.timezone('US/Eastern'),
         }

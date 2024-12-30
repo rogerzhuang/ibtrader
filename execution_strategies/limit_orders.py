@@ -1,7 +1,7 @@
 from ibapi.order import Order
 from .execution_base import BaseExecutionStrategy
 from logger import setup_logger
-from datetime import datetime
+from datetime import datetime, timedelta
 
 logger = setup_logger('LimitOrders')
 
@@ -17,6 +17,8 @@ class DynamicLimitOrderStrategy(BaseExecutionStrategy):
         self.converted_to_market = False
         self.partial_fill_timeout_multiplier = 1.5  # Extend timeout by 50% for partial fills
         self.significant_fill_threshold = 0.25      # 25% fill considered significant
+        self.min_price_duration = 10                 # Minimum seconds to wait at each price level
+        self.last_price_update = None              # Initialize as None until order is created
 
     def create_order(self) -> Order:
         order = Order()
@@ -70,6 +72,8 @@ class DynamicLimitOrderStrategy(BaseExecutionStrategy):
         
         order.lmtPrice = price
         logger.info(f"Creating {order.action} limit order for {symbol} at {order.lmtPrice} (tick size: {tick_size})")
+        # Initialize last_price_update when creating order
+        self.last_price_update = datetime.now()
         return order
         
     def check_and_update(self) -> None:
@@ -77,7 +81,7 @@ class DynamicLimitOrderStrategy(BaseExecutionStrategy):
         if self.status != "ACTIVE" or not self.order_id:
             return
             
-        # New: Get fill information
+        # Get fill information
         fill_info = self.get_fill_info()
         
         # Updated timeout logic with partial fill handling
@@ -106,6 +110,11 @@ class DynamicLimitOrderStrategy(BaseExecutionStrategy):
                 })
                 self.converted_to_market = True
                 return
+        
+        # Check if minimum duration has elapsed since last price update
+        if self.last_price_update and datetime.now() < self.last_price_update + timedelta(seconds=self.min_price_duration):
+            logger.debug(f"Minimum price duration not elapsed - waiting at current price level")
+            return
         
         # Updated price adjustment logic
         if not self.converted_to_market and self.attempts < self.max_attempts:
@@ -156,6 +165,8 @@ class DynamicLimitOrderStrategy(BaseExecutionStrategy):
                     })
                     
                     self.attempts += 1
+                    # Update timestamp only when price actually changes
+                    self.last_price_update = datetime.now()
 
     def _get_full_symbol(self) -> str:
         """Helper method to get the full symbol including option details if applicable"""

@@ -1,0 +1,62 @@
+{
+    "1": {
+        "symbol": "MRNA",
+        "action": "SELL",
+        "quantity": 2,
+        "strategy_id": "OPTION_WRITE_TRADING_001",
+        "instrument_type": "OPTION",
+        "position_id": "a7c52cc6-1e68-4cba-a297-a37df3ad5f55",
+        "timestamp": "2024-12-27T14:05:04.736058-05:00",
+        "last_processed_fill": 2.0,
+        "fill_processed": true,
+        "execution_type": "DYNAMIC_LIMIT",
+        "strike": 36.0,
+        "expiry": "2025-01-03",
+        "option_type": "PUT"
+    },
+    "2": {
+        "symbol": "XPEV",
+        "action": "SELL",
+        "quantity": 8,
+        "strategy_id": "OPTION_WRITE_TRADING_001",
+        "instrument_type": "OPTION",
+        "position_id": "fb739bea-4187-469b-a5af-44592732ce85",
+        "timestamp": "2024-12-27T14:05:06.050079-05:00",
+        "last_processed_fill": 8.0,
+        "fill_processed": true,
+        "execution_type": "DYNAMIC_LIMIT",
+        "strike": 11.5,
+        "expiry": "2025-01-03",
+        "option_type": "PUT"
+    },
+    "3": {
+        "symbol": "SMCI",
+        "action": "SELL",
+        "quantity": 3,
+        "strategy_id": "OPTION_WRITE_TRADING_001",
+        "instrument_type": "OPTION",
+        "position_id": "ef63cfb7-3b0d-40fa-ad3b-1846f78d4545",
+        "timestamp": "2024-12-27T14:26:04.065240-05:00",
+        "last_processed_fill": 3.0,
+        "fill_processed": true,
+        "execution_type": "DYNAMIC_LIMIT",
+        "strike": 28.5,
+        "expiry": "2025-01-03",
+        "option_type": "PUT"
+    },
+    "4": {
+        "symbol": "VST",
+        "action": "SELL",
+        "quantity": 1,
+        "strategy_id": "OPTION_WRITE_TRADING_001",
+        "instrument_type": "OPTION",
+        "position_id": "8fb08160-c580-405f-bb11-5d660959adf9",
+        "timestamp": "2024-12-27T14:26:05.079319-05:00",
+        "last_processed_fill": 1.0,
+        "fill_processed": true,
+        "execution_type": "DYNAMIC_LIMIT",
+        "strike": 123.0,
+        "expiry": "2025-01-03",
+        "option_type": "PUT"
+    }
+}

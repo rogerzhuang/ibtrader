@@ -57,7 +57,6 @@ class TradingApp(EWrapper, EClient):
         self.subscribed_symbols = set()
         
         # Add data ready tracking
-        self.market_data_ready = {}  # Dict to track if market data is received for each symbol
         self.market_data_timeout = 5  # seconds to wait for market data
 
         # Add daily cleanup tracking
@@ -163,11 +162,6 @@ class TradingApp(EWrapper, EClient):
             symbol = self.reqId_to_symbol.get(original_req_id)
             
             if symbol:
-                # Mark market data as ready when we receive first tick
-                if symbol not in self.market_data_ready:
-                    self.market_data_ready[symbol] = True
-                    logger.info(f"Market data ready for {symbol}")
-                
                 if tickType == 1:  # Bid
                     self.data_module.process_streaming_data(symbol, price, 'BID')
                 elif tickType == 2:  # Ask
@@ -318,25 +312,33 @@ class TradingApp(EWrapper, EClient):
         """
         start_time = time.time()
         while time.time() - start_time < self.market_data_timeout:
-            # Check both market data ready flag and actual price data
-            if self.market_data_ready.get(symbol, False):
-                data = self.data_module.streaming_data.get(symbol, {})
-                # For SELL orders we need ask price, for BUY orders we need bid price
-                has_valid_prices = (
-                    data.get('bid') is not None and 
-                    data.get('ask') is not None and
-                    data.get('last') is not None
+            data = self.data_module.streaming_data.get(symbol, {})
+            tick_size = self.data_module.get_tick_size(symbol)
+            
+            # Check both price data and tick size
+            has_valid_prices = (
+                data.get('bid') is not None and 
+                data.get('ask') is not None and
+                data.get('last') is not None and
+                tick_size is not None  # Add tick size check
+            )
+            
+            if has_valid_prices:
+                logger.info(
+                    f"Market data ready for {symbol} with valid prices: {data}, "
+                    f"tick size: {tick_size}"
                 )
-                if has_valid_prices:
-                    logger.info(f"Market data ready for {symbol} with valid prices: {data}")
-                    return True
+                return True
+            
             time.sleep(0.1)
         
         # Log what data we actually have when timeout occurs
         data = self.data_module.streaming_data.get(symbol, {})
+        tick_size = self.data_module.get_tick_size(symbol)
         logger.warning(
             f"Timeout waiting for market data for {symbol}. "
-            f"Current data: bid={data.get('bid')}, ask={data.get('ask')}, last={data.get('last')}"
+            f"Current data: bid={data.get('bid')}, ask={data.get('ask')}, "
+            f"last={data.get('last')}, tick_size={tick_size}"
         )
         return False
 
@@ -349,7 +351,6 @@ class TradingApp(EWrapper, EClient):
             
             logger.info("Performing daily cleanup of market data subscriptions")
             self.subscribed_symbols.clear()
-            self.market_data_ready.clear()
             self.last_cleanup_date = current_time.date()
 
     def process_signals(self):
@@ -393,7 +394,7 @@ class TradingApp(EWrapper, EClient):
                         logger.warning("Not connected to TWS. Waiting to place order...")
                         time.sleep(5)
 
-                    # Create order info first
+                    # Create order info with position ID
                     order_info = self.position_manager.create_order_info(signal)
                     
                     # Create and place order
@@ -545,6 +546,4 @@ class TradingApp(EWrapper, EClient):
             # Clear subscribed symbols before resubscribing
             symbols_to_resubscribe = list(self.subscribed_symbols)
             self.subscribed_symbols.clear()
-            # Also clear market data ready flags
-            self.market_data_ready.clear()
             self.request_market_data(symbols_to_resubscribe)
