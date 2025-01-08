@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Trading System Logs</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background-color: #1e1e1e;
+        color: #d4d4d4;
+        font-family: "Consolas", "Monaco", monospace;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      #log-container {
+        white-space: pre-wrap;
+        height: 100vh;
+        padding: 20px;
+        overflow-y: auto;
+
+        /* Hide scrollbar for Chrome/Safari/Opera */
+        &::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        &::-webkit-scrollbar-track {
+          background: #2d2d2d;
+        }
+
+        &::-webkit-scrollbar-thumb {
+          background: #555;
+          border-radius: 4px;
+        }
+
+        &::-webkit-scrollbar-thumb:hover {
+          background: #666;
+        }
+
+        /* Hide scrollbar for Firefox */
+        scrollbar-width: thin;
+        scrollbar-color: #555 #2d2d2d;
+      }
+
+      .error {
+        color: #ff6b6b;
+        opacity: 0;
+        animation: fadeIn 0.3s ease-in forwards;
+      }
+
+      .info {
+        color: #69ff94;
+        opacity: 0;
+        animation: fadeIn 0.3s ease-in forwards;
+      }
+
+      .warning {
+        color: #ffd93d;
+        opacity: 0;
+        animation: fadeIn 0.3s ease-in forwards;
+      }
+
+      .debug {
+        color: #808080;
+        opacity: 0;
+        animation: fadeIn 0.3s ease-in forwards;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="log-container"></div>
+    <script>
+      const logContainer = document.getElementById("log-container");
+      const eventSource = new EventSource(window.location.href + "/stream");
+
+      eventSource.onmessage = function (e) {
+        const line = e.data;
+        const div = document.createElement("div");
+        div.textContent = line;
+
+        if (line.includes("ERROR")) {
+          div.className = "error";
+        } else if (line.includes("INFO")) {
+          div.className = "info";
+        } else if (line.includes("WARNING")) {
+          div.className = "warning";
+        } else if (line.includes("DEBUG")) {
+          div.className = "debug";
+        }
+
+        logContainer.appendChild(div);
+        logContainer.scrollTop = logContainer.scrollHeight;
+      };
+
+      eventSource.onerror = function () {
+        setTimeout(() => {
+          window.location.reload();
+        }, 5000);
+      };
+    </script>
+  </body>
+</html>

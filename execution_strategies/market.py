@@ -1,6 +1,7 @@
 from .execution_base import BaseExecutionStrategy
 from ibapi.order import Order
 from logger import setup_logger
+from config import Config
 
 logger = setup_logger('MarketOrders')
 
@@ -19,6 +20,7 @@ class IOCMarketOrderStrategy(BaseExecutionStrategy):
         order.tif = "IOC"  # Immediate or Cancel
         order.eTradeOnly = False
         order.firmQuoteOnly = False
+        order.account = Config.ACCOUNT_ID
         return order
 
     def check_and_update(self) -> None:

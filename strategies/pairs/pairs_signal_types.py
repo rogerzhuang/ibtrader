@@ -27,7 +27,5 @@ class OptionTrade:
 
 @dataclass
 class SignalResponse:
-    timestamp: str
-    total_capital: float
     pairs_trades: List[PairTrade]
     options_trades: List[OptionTrade]

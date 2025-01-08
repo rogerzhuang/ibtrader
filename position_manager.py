@@ -3,7 +3,7 @@ from ibapi.order import Order
 from threading import Lock
 import logging
 import json
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 from config import Config
 from datetime import datetime
 from logger import setup_logger
@@ -13,9 +13,10 @@ logger = setup_logger('PositionManager')
 
 class PositionManager:
     def __init__(self):
-        self.orders: Dict[int, Dict[str, Any]] = {}
+        self.orders: Dict[Union[int, str], Dict[str, Any]] = {}
         self.positions: Dict[str, Dict[str, Any]] = {}
         self.order_lock = Lock()
+        self.TEMP_ORDER_PREFIX = "TEMP_"  # Prefix for temporary orders
         Config.DATA_DIR.mkdir(exist_ok=True)
         self._load_positions()
         self._load_orders()
@@ -51,24 +52,31 @@ class PositionManager:
         Returns position_id if found, None otherwise
         """
         with self.order_lock:
-            for position_id, position in self.positions.items():
-                if (position['symbol'] == symbol and 
-                    position['strategy_id'] == strategy_id and
-                    position['instrument_type'] == instrument_type):
-                    
-                    # For options, match all option-specific fields
-                    if instrument_type == 'OPTION':
-                        if (position['strike'] == kwargs.get('strike') and
-                            position['expiry'] == kwargs.get('expiry') and
-                            position['option_type'] == kwargs.get('option_type')):
-                            return position_id
-                    # For futures, match expiry
-                    elif instrument_type == 'FUTURE':
-                        if position['expiry'] == kwargs.get('expiry'):
-                            return position_id
-                    # For stocks, match already found
-                    else:
+            return self._find_matching_position_internal(
+                symbol, instrument_type, strategy_id, **kwargs
+            )
+
+    def _find_matching_position_internal(self, symbol: str, instrument_type: str, 
+                                       strategy_id: str, **kwargs) -> Optional[str]:
+        """Find existing position without lock"""
+        for position_id, position in self.positions.items():
+            if (position['symbol'] == symbol and 
+                position['strategy_id'] == strategy_id and
+                position['instrument_type'] == instrument_type):
+                
+                # For options, match all option-specific fields
+                if instrument_type == 'OPTION':
+                    if (position['strike'] == kwargs.get('strike') and
+                        position['expiry'] == kwargs.get('expiry') and
+                        position['option_type'] == kwargs.get('option_type')):
                         return position_id
+                # For futures, match expiry
+                elif instrument_type == 'FUTURE':
+                    if position['expiry'] == kwargs.get('expiry'):
+                        return position_id
+                # For stocks, match already found
+                else:
+                    return position_id
         return None
 
     def get_or_create_position_id(self, symbol: str, instrument_type: str, 
@@ -135,35 +143,49 @@ class PositionManager:
                        position_id: str, **kwargs):
         """Update position tracking and persist to file"""
         with self.order_lock:
-            # Base position info
-            position = {
-                'symbol': symbol,
-                'quantity': quantity,
-                'avg_price': avg_price,
-                'strategy_id': strategy_id,
-                'instrument_type': instrument_type,
-                'last_updated': datetime.now(Config.TIMEZONE).isoformat()
-            }
-            
-            # Add instrument-specific details
-            if instrument_type == 'OPTION':
-                position.update({
-                    'strike': kwargs.get('strike'),
-                    'expiry': kwargs.get('expiry'),
-                    'option_type': kwargs.get('option_type')
-                })
-            elif instrument_type == 'FUTURE':
-                position.update({
-                    'expiry': kwargs.get('expiry')
-                })
-            
-            # Add strategy-specific details
-            if kwargs.get('pair_id'):
-                position['pair_id'] = kwargs.get('pair_id')
-            
-            self.positions[position_id] = position
-            logger.info(f"Updated position {position_id} for {symbol} (Strategy: {strategy_id}): {quantity} @ {avg_price}")
-            self._save_positions()
+            self._update_position_internal(
+                symbol=symbol,
+                quantity=quantity,
+                avg_price=avg_price,
+                instrument_type=instrument_type,
+                strategy_id=strategy_id,
+                position_id=position_id,
+                **kwargs
+            )
+
+    def _update_position_internal(self, symbol: str, quantity: int, avg_price: float,
+                                instrument_type: str, strategy_id: str,
+                                position_id: str, **kwargs):
+        """Internal method to update position without locking"""
+        # Base position info
+        position = {
+            'symbol': symbol,
+            'quantity': quantity,
+            'avg_price': avg_price,
+            'strategy_id': strategy_id,
+            'instrument_type': instrument_type,
+            'last_updated': datetime.now(Config.TIMEZONE).isoformat()
+        }
+        
+        # Add instrument-specific details
+        if instrument_type == 'OPTION':
+            position.update({
+                'strike': kwargs.get('strike'),
+                'expiry': kwargs.get('expiry'),
+                'option_type': kwargs.get('option_type')
+            })
+        elif instrument_type == 'FUTURE':
+            position.update({
+                'expiry': kwargs.get('expiry')
+            })
+        
+        # Add strategy-specific details
+        if kwargs.get('pair_id'):
+            position['pair_id'] = kwargs.get('pair_id')
+        
+        self.positions[position_id] = position
+        logger.info(f"Updated position {position_id} for {symbol} (Strategy: {strategy_id}): {quantity} @ {avg_price}")
+        self._save_positions()
     
     def get_all_positions(self, strategy_id: str = None) -> Dict[str, Dict]:
         """Get all positions for a specific strategy"""
@@ -203,3 +225,187 @@ class PositionManager:
             else:
                 self.orders[order_id] = updates
             self._save_orders()
+
+    def process_fill(self, order_id: int, new_fill_quantity: float, fill_price: float) -> None:
+        """Process a fill, handling both regular fills and closing exercises"""
+        with self.order_lock:
+            self._process_fill_internal(
+                order_id=order_id,
+                new_fill_quantity=new_fill_quantity,
+                fill_price=fill_price,
+            )
+
+    def _process_fill_internal(self, order_id: int, new_fill_quantity: float, 
+                             fill_price: float) -> None:
+        """Process a fill without locking"""
+        order = self.orders.get(order_id)
+        if not order:
+            logger.error(f"Order {order_id} not found")
+            return
+
+        position_id = order['position_id']
+        current_position = self.positions.get(position_id, {
+            'quantity': 0,
+            'avg_price': 0
+        })
+
+        logger.debug(
+            f"Processing position update for position_id {position_id} - "
+            f"Current: {current_position.get('quantity', 0)} @ "
+            f"{current_position.get('avg_price', 0)}"
+        )
+
+        # Calculate position update
+        filled_qty = new_fill_quantity if order['action'] == 'BUY' else -new_fill_quantity
+        new_quantity = current_position.get('quantity', 0) + filled_qty
+        
+        # Calculate new average price
+        if new_quantity != 0:
+            current_qty = current_position.get('quantity', 0)
+            current_avg = current_position.get('avg_price', 0)
+            
+            if current_qty * new_quantity > 0:  # Same direction
+                if abs(new_quantity) > abs(current_qty):  # Adding
+                    new_avg_price = (
+                        (abs(current_qty) * current_avg) + 
+                        (abs(filled_qty) * fill_price)
+                    ) / abs(new_quantity)
+                else:  # Reducing
+                    new_avg_price = current_avg
+            else:  # Direction changed
+                new_avg_price = fill_price
+        else:  # Position closed
+            new_avg_price = 0
+
+        # Update position without acquiring lock again
+        self._update_position_internal(
+            symbol=order['symbol'],
+            quantity=new_quantity,
+            avg_price=new_avg_price,
+            instrument_type=order['instrument_type'],
+            strategy_id=order['strategy_id'],
+            position_id=position_id,
+            **{k: v for k, v in order.items() if k in ['strike', 'expiry', 'option_type', 'pair_id']}
+        )
+
+    def _generate_order_id(self) -> str:
+        """Generate a unique order ID"""
+        return str(uuid4())
+
+    def process_exercise(self, symbol: str, position: dict, close_price: float, pos_id: str):
+        """Process option exercise/assignment/expiration
+        Args:
+            symbol: Underlying symbol
+            position: Option position dictionary
+            close_price: Underlying close price on expiration
+            pos_id: Position ID
+        """
+        with self.order_lock:
+            try:
+                strike = position['strike']
+                quantity = position['quantity']
+                option_type = position['option_type']
+                
+                # Determine if option is in the money
+                is_call = option_type.upper() == 'CALL'
+                is_itm = (close_price > strike) if is_call else (close_price < strike)
+                
+                if is_itm:
+                    # Exercise (positive position) or Assignment (negative position)
+                    # Create synthetic option close order
+                    synthetic_option_order_id = self._generate_order_id()
+                    synthetic_option_order = {
+                        'symbol': symbol,
+                        'action': 'BUY' if quantity < 0 else 'SELL',  # Close position direction
+                        'quantity': abs(quantity),
+                        'position_id': pos_id,
+                        'strategy_id': position['strategy_id'],
+                        'instrument_type': 'OPTION',
+                        'strike': strike,
+                        'expiry': position['expiry'],
+                        'option_type': option_type,
+                        'timestamp': datetime.now(Config.TIMEZONE).isoformat(),
+                        'synthetic_exercise_close': True
+                    }
+                    self.orders[synthetic_option_order_id] = synthetic_option_order
+                    
+                    # Close option position
+                    self._process_fill_internal(
+                        order_id=synthetic_option_order_id,
+                        new_fill_quantity=abs(quantity),
+                        fill_price=0.0
+                    )
+                    
+                    # Create/update stock position
+                    stock_position_id = self._find_matching_position_internal(
+                        symbol=symbol,
+                        instrument_type='STOCK',
+                        strategy_id=position['strategy_id']
+                    ) or self._generate_position_id()
+                    
+                    # Determine stock action and quantity
+                    is_exercise = quantity > 0
+                    stock_action = 'BUY' if (is_call == is_exercise) else 'SELL'
+                    stock_qty = abs(quantity) * 100  # Convert to shares
+                    
+                    # Create synthetic stock order
+                    synthetic_stock_order_id = self._generate_order_id()
+                    synthetic_stock_order = {
+                        'symbol': symbol,
+                        'action': stock_action,
+                        'quantity': stock_qty,
+                        'position_id': stock_position_id,
+                        'strategy_id': position['strategy_id'],
+                        'instrument_type': 'STOCK',
+                        'timestamp': datetime.now(Config.TIMEZONE).isoformat(),
+                        'synthetic_exercise_stock': True
+                    }
+                    self.orders[synthetic_stock_order_id] = synthetic_stock_order
+                    
+                    # Update stock position
+                    self._process_fill_internal(
+                        order_id=synthetic_stock_order_id,
+                        new_fill_quantity=stock_qty,
+                        fill_price=strike  # Exercise/assignment occurs at strike price
+                    )
+                    
+                    logger.info(
+                        f"Processed {'exercise' if is_exercise else 'assignment'} for "
+                        f"{symbol} {option_type} {strike} - {quantity} contracts"
+                    )
+                
+                else:
+                    # Out of the money - expire worthless
+                    synthetic_order_id = self._generate_order_id()
+                    synthetic_order = {
+                        'symbol': symbol,
+                        'action': 'BUY' if quantity < 0 else 'SELL',  # Close position direction
+                        'quantity': abs(quantity),
+                        'position_id': pos_id,
+                        'strategy_id': position['strategy_id'],
+                        'instrument_type': 'OPTION',
+                        'strike': strike,
+                        'expiry': position['expiry'],
+                        'option_type': option_type,
+                        'timestamp': datetime.now(Config.TIMEZONE).isoformat(),
+                        'synthetic_expiration': True
+                    }
+                    self.orders[synthetic_order_id] = synthetic_order
+                    
+                    # Close option position
+                    self._process_fill_internal(
+                        order_id=synthetic_order_id,
+                        new_fill_quantity=abs(quantity),
+                        fill_price=0.0
+                    )
+                    
+                    logger.info(
+                        f"Processed expiration for {symbol} {option_type} {strike} - "
+                        f"{quantity} contracts"
+                    )
+                
+                self._save_orders()
+                
+            except Exception as e:
+                logger.error(f"Error processing exercise/expiration: {e}")
+                raise

@@ -2,6 +2,8 @@ from ibapi.order import Order
 from .execution_base import BaseExecutionStrategy
 from logger import setup_logger
 from datetime import datetime, timedelta
+import math
+from config import Config
 
 logger = setup_logger('LimitOrders')
 
@@ -28,6 +30,7 @@ class DynamicLimitOrderStrategy(BaseExecutionStrategy):
         order.eTradeOnly = False
         order.firmQuoteOnly = False
         order.tif = 'DAY'
+        order.account = Config.ACCOUNT_ID
         
         # Get current market data and tick size for the instrument
         symbol = self._get_full_symbol()
@@ -51,10 +54,10 @@ class DynamicLimitOrderStrategy(BaseExecutionStrategy):
                 # Calculate mid price and round to nearest valid tick
                 mid_price = (bid + ask) / 2
                 ticks = round(mid_price / tick_size)
-                price = ticks * tick_size
+                price = round(ticks * tick_size, -int(math.log10(tick_size)))  # Round to tick size decimal places
                 # If rounded mid price is above ask, use bid instead
                 if price >= ask:
-                    price = bid
+                    price = round(bid, -int(math.log10(tick_size)))  # Round bid price too
         else:  # SELL
             if bid is None or bid <= 0 or ask is None or ask <= 0:
                 price = data.get('last')  # Try last price as fallback
@@ -65,10 +68,10 @@ class DynamicLimitOrderStrategy(BaseExecutionStrategy):
                 # Calculate mid price and round to nearest valid tick
                 mid_price = (bid + ask) / 2
                 ticks = round(mid_price / tick_size)
-                price = ticks * tick_size
+                price = round(ticks * tick_size, -int(math.log10(tick_size)))  # Round to tick size decimal places
                 # If rounded mid price is below bid, use ask instead
                 if price <= bid:
-                    price = ask
+                    price = round(ask, -int(math.log10(tick_size)))  # Round ask price too
         
         order.lmtPrice = price
         logger.info(f"Creating {order.action} limit order for {symbol} at {order.lmtPrice} (tick size: {tick_size})")

@@ -30,14 +30,17 @@ class StrategyModule:
                 self.strategies[config['strategy_id']] = strategy
 
     def check_trading_time(self) -> bool:
-        """Check if any strategy needs to fetch signals"""
-        return any(strategy.check_trading_time() for strategy in self.strategies.values())
+        """Check if any strategy needs to fetch signals without updating timestamps"""
+        return any(strategy.check_trading_time(update_timestamp=False)[0] 
+                  for strategy in self.strategies.values())
 
     def fetch_signals(self):
         """Fetch signals for all strategies that need updating"""
         for strategy in self.strategies.values():
-            if strategy.check_trading_time():
+            try:
                 strategy.fetch_signals()
+            except Exception as e:
+                logger.error(f"Error fetching signals for strategy {strategy.strategy_id}: {e}")
 
     def get_next_signal(self):
         """Get the next signal from any strategy that has one"""

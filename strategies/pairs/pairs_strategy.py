@@ -8,32 +8,54 @@ from logger import setup_logger
 logger = setup_logger('PairsTradingStrategy')
 
 class PairsTradingStrategy(BaseStrategy):
-    def check_trading_time(self) -> bool:
+    def check_trading_time(self, update_timestamp=False) -> tuple[bool, dict | None]:
         now = datetime.now(self.strategy_config['timezone'])
-        should_check = (
-            now.hour == self.strategy_config['signal_check_hour'] and 
-            now.minute == self.strategy_config['signal_check_minute'] and
-            (self.last_signal_check is None or 
-             now.date() > self.last_signal_check.date())
-        )
-        return should_check
+        current_date = now.date()
+
+        for check_time in self.strategy_config['signal_check_times']:
+            if (now.hour == check_time['hour'] and 
+                now.minute == check_time['minute']):
+                
+                # Create unique key for this check time
+                check_key = f"{check_time['hour']}:{check_time['minute']}"
+                last_check = self.last_signal_checks.get(check_key)
+                
+                if last_check is None or current_date > last_check.date():
+                    if update_timestamp:
+                        self.last_signal_checks[check_key] = now
+                        logger.info(
+                            f"[PAIRS:{self.strategy_id}] Processing signals for "
+                            f"check time {check_time['hour']:02d}:{check_time['minute']:02d}"
+                        )
+                    return True, check_time
+        return False, None
 
     def fetch_signals(self):
-        date_str = datetime.now(
-            self.strategy_config['timezone']
-        ).strftime("%Y%m%d")
-        url = (f"{self.strategy_config['signal_base_url']}/"
-               f"{date_str}/{self.strategy_config['capital_allocation']}")
+        should_process, current_check = self.check_trading_time(update_timestamp=True)
+        if not should_process or not current_check:
+            return SignalResponse(pairs_trades=[], options_trades=[])
         
         try:
+            # Add random delay before fetching
+            delay = self._apply_random_delay()
+            logger.info(f"[PAIRS:{self.strategy_id}] Applying {delay:.2f}s delay before fetching signals")
+
+            current_time = datetime.now(self.strategy_config['timezone'])
+            date_str = current_time.strftime("%Y%m%d")
+            url = (f"{self.strategy_config['signal_base_url']}/"
+                   f"{date_str}/{self.strategy_config['capital_allocation']}")
+            
+            logger.info(
+                f"[PAIRS:{self.strategy_id}] Processing signals "
+                f"at {current_check['hour']:02d}:{current_check['minute']:02d}"
+            )
+
             response = requests.get(url)
             response.raise_for_status()
             data = response.json()
             
             # Convert the raw data into proper dataclass instances
             signals = SignalResponse(
-                timestamp=data['timestamp'],
-                total_capital=data['total_capital'],
                 pairs_trades=[
                     PairTrade(
                         pair=trade['pair'],
@@ -64,24 +86,22 @@ class PairsTradingStrategy(BaseStrategy):
                 ]
             )
             
-            logger.debug(f"Processed {len(signals.pairs_trades)} pair trades and {len(signals.options_trades)} option trades")
-            
-            # Process the signals and update last check time
-            self.process_signals(signals)
-            self.last_signal_check = datetime.now(self.strategy_config['timezone'])
-            logger.info(
-                f"[PAIRS:{self.strategy_id}] Successfully fetched and processed "
-                f"{len(signals.pairs_trades)} pair trades and "
+            logger.debug(
+                f"Processed {len(signals.pairs_trades)} pair trades and "
                 f"{len(signals.options_trades)} option trades"
+            )
+            
+            # Process the signals
+            self.process_signals(signals)
+            logger.info(
+                f"[PAIRS:{self.strategy_id}] Successfully processed signals for "
+                f"check time {current_check['hour']:02d}:{current_check['minute']:02d}"
             )
             
             return signals
             
         except Exception as e:
-            logger.error(
-                f"[PAIRS:{self.strategy_id}] Error fetching signals: {e}", 
-                exc_info=True
-            )
+            logger.error(f"[PAIRS:{self.strategy_id}] Error fetching signals: {e}", exc_info=True)
             raise
 
     def process_signals(self, signals: SignalResponse):

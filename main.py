@@ -4,12 +4,27 @@ import time
 import logging
 from pathlib import Path
 from datetime import datetime
+import pytz
+from flask import Flask, Response, request
 
 from config import Config
 from trading_app import TradingApp
 from logger import setup_logger
+from web.routes import logs
 
 logger = setup_logger('main')
+
+def create_app():
+    app = Flask(__name__, 
+                template_folder='web/templates')
+    # Pass Config to the blueprint
+    app.register_blueprint(logs, url_prefix='', config=Config)
+    return app
+
+def start_flask_server():
+    """Start Flask server in debug mode"""
+    app = create_app()
+    app.run(host='0.0.0.0', port=5000, debug=False)
 
 def start_client_thread(app):
     """Start the client thread and return it"""
@@ -48,6 +63,12 @@ def main():
     try:
         # Initialize trading app
         app = TradingApp()
+        
+        # Start Flask server in a separate thread
+        flask_thread = threading.Thread(target=start_flask_server)
+        flask_thread.daemon = True
+        flask_thread.start()
+        logger.info("Started Flask server thread")
         
         logger.info(f"Connecting to {Config.TWS_HOST}:{Config.TWS_PORT}")
         # Initial connection attempt
@@ -89,7 +110,8 @@ def main():
             threads = [
                 ("client thread", client_thread),
                 ("signal thread", signal_thread),
-                ("execution monitor thread", execution_monitor)
+                ("execution monitor thread", execution_monitor),
+                ("flask server thread", flask_thread)
             ]
             
             for thread_name, thread in threads:

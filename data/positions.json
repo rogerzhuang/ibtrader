@@ -5,7 +5,7 @@
         "avg_price": 0,
         "strategy_id": "PAIRS_TRADING_001",
         "instrument_type": "STOCK",
-        "last_updated": "2024-12-23T15:46:01.971754-05:00",
+        "last_updated": "2025-01-06T15:55:04.522146-05:00",
         "pair_id": "LCID/RIVN"
     },
     "6ba7b810-9dad-11d1-80b4-00c04fd430c8": {
@@ -14,7 +14,7 @@
         "avg_price": 0,
         "strategy_id": "PAIRS_TRADING_001",
         "instrument_type": "STOCK",
-        "last_updated": "2024-12-23T15:46:03.064134-05:00",
+        "last_updated": "2025-01-06T15:55:04.620410-05:00",
         "pair_id": "LCID/RIVN"
     },
     "7ba7b810-9dad-11d1-80b4-00c04fd430c8": {
@@ -37,20 +37,20 @@
     },
     "9ba7b810-9dad-11d1-80b4-00c04fd430c8": {
         "symbol": "MAR",
-        "quantity": 27.0,
-        "avg_price": 283.435,
+        "quantity": 0.0,
+        "avg_price": 0,
         "strategy_id": "PAIRS_TRADING_001",
         "instrument_type": "STOCK",
-        "last_updated": "2024-12-23T15:46:05.219861-05:00",
+        "last_updated": "2024-12-31T15:55:03.710641-05:00",
         "pair_id": "MAR/HLT"
     },
     "aba7b810-9dad-11d1-80b4-00c04fd430c8": {
         "symbol": "HLT",
-        "quantity": -36.0,
-        "avg_price": 250.805,
+        "quantity": 0.0,
+        "avg_price": 0,
         "strategy_id": "PAIRS_TRADING_001",
         "instrument_type": "STOCK",
-        "last_updated": "2024-12-23T15:46:05.931368-05:00",
+        "last_updated": "2024-12-31T15:55:04.604505-05:00",
         "pair_id": "MAR/HLT"
     },
     "bba7b810-9dad-11d1-80b4-00c04fd430c8": {
@@ -59,7 +59,7 @@
         "avg_price": 0,
         "strategy_id": "PAIRS_TRADING_001",
         "instrument_type": "STOCK",
-        "last_updated": "2024-12-23T15:46:03.430280-05:00",
+        "last_updated": "2025-01-06T15:55:05.378335-05:00",
         "pair_id": "ENPH/SEDG"
     },
     "cba7b810-9dad-11d1-80b4-00c04fd430c8": {
@@ -68,7 +68,7 @@
         "avg_price": 0,
         "strategy_id": "PAIRS_TRADING_001",
         "instrument_type": "STOCK",
-        "last_updated": "2024-12-23T15:46:04.317155-05:00",
+        "last_updated": "2025-01-06T15:55:06.545802-05:00",
         "pair_id": "ENPH/SEDG"
     },
     "dba7b810-9dad-11d1-80b4-00c04fd430c8": {
@@ -89,21 +89,10 @@
         "last_updated": "2024-12-23T15:46:07.530605-05:00",
         "pair_id": "S/CRWD"
     },
-    "bb0bf7fd-f00d-4a1a-8ae0-2a143ad1d2d0": {
-        "symbol": "XPEV",
-        "quantity": -8.0,
-        "avg_price": 0.04,
-        "strategy_id": "OPTION_WRITE_TRADING_001",
-        "instrument_type": "OPTION",
-        "last_updated": "2024-12-27T10:49:06.123021-05:00",
-        "strike": 11.5,
-        "expiry": "2025-01-03",
-        "option_type": "PUT"
-    },
     "030eaf2c-9843-4c52-8d42-63c3275d4b1a": {
         "symbol": "MRNA",
-        "quantity": -2.0,
-        "avg_price": 0.15,
+        "quantity": 0.0,
+        "avg_price": 0,
         "strategy_id": "OPTION_WRITE_TRADING_001",
         "instrument_type": "OPTION",
         "last_updated": "2024-12-27T10:49:07.054649-05:00",
@@ -113,8 +102,8 @@
     },
     "0b70a131-472f-410a-a983-d51e2d28cea9": {
         "symbol": "VST",
-        "quantity": -1.0,
-        "avg_price": 0.31,
+        "quantity": 0.0,
+        "avg_price": 0,
         "strategy_id": "OPTION_WRITE_TRADING_001",
         "instrument_type": "OPTION",
         "last_updated": "2024-12-27T10:49:09.019870-05:00",
@@ -124,13 +113,209 @@
     },
     "ec9d8fb8-d0e9-4684-be66-ffa0a4392878": {
         "symbol": "SMCI",
-        "quantity": -3.0,
-        "avg_price": 0.31,
+        "quantity": 0.0,
+        "avg_price": 0,
         "strategy_id": "OPTION_WRITE_TRADING_001",
         "instrument_type": "OPTION",
         "last_updated": "2024-12-27T12:46:04.335264-05:00",
         "strike": 28.5,
         "expiry": "2025-01-03",
         "option_type": "PUT"
+    },
+    "14243df4-39af-499e-b12d-e6c59a432134": {
+        "symbol": "DAL",
+        "quantity": -2.0,
+        "avg_price": 0.5,
+        "strategy_id": "OPTION_WRITE_TRADING_001",
+        "instrument_type": "OPTION",
+        "last_updated": "2025-01-02T14:00:21.647320-05:00",
+        "strike": 53.0,
+        "expiry": "2025-01-10",
+        "option_type": "PUT"
+    },
+    "95e9b595-d34d-4495-9f2a-29477acb7967": {
+        "symbol": "UAL",
+        "quantity": -2.0,
+        "avg_price": 0.48,
+        "strategy_id": "OPTION_WRITE_TRADING_001",
+        "instrument_type": "OPTION",
+        "last_updated": "2025-01-02T14:00:16.297078-05:00",
+        "strike": 85.0,
+        "expiry": "2025-01-10",
+        "option_type": "PUT"
+    },
+    "689b191c-20ba-40b8-84af-b9d8461edfa3": {
+        "symbol": "MRNA",
+        "quantity": -4.0,
+        "avg_price": 0.225,
+        "strategy_id": "OPTION_WRITE_TRADING_001",
+        "instrument_type": "OPTION",
+        "last_updated": "2025-01-02T14:00:18.420049-05:00",
+        "strike": 37.5,
+        "expiry": "2025-01-10",
+        "option_type": "PUT"
+    },
+    "d2c8a62d-1f0d-4fc4-b17a-5d69271ac96e": {
+        "symbol": "SMCI",
+        "quantity": -6.0,
+        "avg_price": 0.38499999999999995,
+        "strategy_id": "OPTION_WRITE_TRADING_001",
+        "instrument_type": "OPTION",
+        "last_updated": "2025-01-02T14:01:12.652719-05:00",
+        "strike": 27.0,
+        "expiry": "2025-01-10",
+        "option_type": "PUT"
+    },
+    "8a2bd238-b7b5-4004-8713-855b1179ecda": {
+        "symbol": "XPEV",
+        "quantity": -18.0,
+        "avg_price": 0.07000000000000002,
+        "strategy_id": "OPTION_WRITE_TRADING_001",
+        "instrument_type": "OPTION",
+        "last_updated": "2025-01-02T14:01:15.660946-05:00",
+        "strike": 10.5,
+        "expiry": "2025-01-10",
+        "option_type": "PUT"
+    },
+    "f8d77b96-d244-4d5f-aec5-18c0a98f92dc": {
+        "symbol": "SYM",
+        "quantity": -8.0,
+        "avg_price": 0.07500000000000001,
+        "strategy_id": "OPTION_WRITE_TRADING_001",
+        "instrument_type": "OPTION",
+        "last_updated": "2025-01-02T14:01:18.608980-05:00",
+        "strike": 22.0,
+        "expiry": "2025-01-10",
+        "option_type": "PUT"
+    },
+    "dafdcab7-85fc-44f4-8a60-f5efa329f1b4": {
+        "symbol": "SNAP",
+        "quantity": -20.0,
+        "avg_price": 0.05,
+        "strategy_id": "OPTION_WRITE_TRADING_001",
+        "instrument_type": "OPTION",
+        "last_updated": "2025-01-02T14:01:20.617651-05:00",
+        "strike": 10.0,
+        "expiry": "2025-01-10",
+        "option_type": "PUT"
+    },
+    "1fe78540-0ba4-4daf-92dd-611b3c67f519": {
+        "symbol": "DAL",
+        "quantity": -1.0,
+        "avg_price": 0.39,
+        "strategy_id": "OPTION_WRITE_TRADING_002",
+        "instrument_type": "OPTION",
+        "last_updated": "2025-01-03T11:01:15.857782-05:00",
+        "strike": 52.0,
+        "expiry": "2025-01-10",
+        "option_type": "PUT"
+    },
+    "41f00681-6df9-475c-8591-2b2ca547e78c": {
+        "symbol": "SMCI",
+        "quantity": -3.0,
+        "avg_price": 0.16,
+        "strategy_id": "OPTION_WRITE_TRADING_002",
+        "instrument_type": "OPTION",
+        "last_updated": "2025-01-03T11:01:23.451200-05:00",
+        "strike": 27.0,
+        "expiry": "2025-01-10",
+        "option_type": "PUT"
+    },
+    "2508710c-9433-41ab-bfb3-9deceb7b8845": {
+        "symbol": "UAL",
+        "quantity": -1.0,
+        "avg_price": 0.38,
+        "strategy_id": "OPTION_WRITE_TRADING_002",
+        "instrument_type": "OPTION",
+        "last_updated": "2025-01-03T11:01:25.238496-05:00",
+        "strike": 85.0,
+        "expiry": "2025-01-10",
+        "option_type": "PUT"
+    },
+    "c90bfb8b-268d-44fd-a51d-afa87eb12321": {
+        "symbol": "ROKU",
+        "quantity": -1.0,
+        "avg_price": 0.23,
+        "strategy_id": "OPTION_WRITE_TRADING_002",
+        "instrument_type": "OPTION",
+        "last_updated": "2025-01-03T11:01:26.018069-05:00",
+        "strike": 67.0,
+        "expiry": "2025-01-10",
+        "option_type": "PUT"
+    },
+    "a70a0876-61ad-4213-b4a6-beef8d1c1030": {
+        "symbol": "XPEV",
+        "quantity": -9.0,
+        "avg_price": 0.04,
+        "strategy_id": "OPTION_WRITE_TRADING_002",
+        "instrument_type": "OPTION",
+        "last_updated": "2025-01-03T11:01:39.380369-05:00",
+        "strike": 10.5,
+        "expiry": "2025-01-10",
+        "option_type": "PUT"
+    },
+    "46714773-c86f-45c7-97a4-492ac5a425a6": {
+        "symbol": "MRNA",
+        "quantity": -2.0,
+        "avg_price": 0.11,
+        "strategy_id": "OPTION_WRITE_TRADING_002",
+        "instrument_type": "OPTION",
+        "last_updated": "2025-01-03T11:02:22.446425-05:00",
+        "strike": 37.5,
+        "expiry": "2025-01-10",
+        "option_type": "PUT"
+    },
+    "551af8c5-84a9-4154-89c6-306e591f3371": {
+        "symbol": "SNAP",
+        "quantity": -10.0,
+        "avg_price": 0.02,
+        "strategy_id": "OPTION_WRITE_TRADING_002",
+        "instrument_type": "OPTION",
+        "last_updated": "2025-01-03T11:02:23.759210-05:00",
+        "strike": 10.0,
+        "expiry": "2025-01-10",
+        "option_type": "PUT"
+    },
+    "7eeea326-45f6-4b3e-bee6-8f711916927d": {
+        "symbol": "FUTU",
+        "quantity": -1.0,
+        "avg_price": 0.17,
+        "strategy_id": "OPTION_WRITE_TRADING_002",
+        "instrument_type": "OPTION",
+        "last_updated": "2025-01-03T11:02:27.492421-05:00",
+        "strike": 72.05,
+        "expiry": "2025-01-10",
+        "option_type": "PUT"
+    },
+    "b166726f-bb2f-4ebb-96de-b849e9242175": {
+        "symbol": "LCID",
+        "quantity": -14.0,
+        "avg_price": 0.06,
+        "strategy_id": "PAIRS_TRADING_001",
+        "instrument_type": "OPTION",
+        "last_updated": "2025-01-03T15:55:11.697606-05:00",
+        "strike": 3.0,
+        "expiry": "2025-01-10",
+        "option_type": "PUT",
+        "pair_id": "LCID/RIVN"
+    },
+    "bb0bf7fd-f00d-4a1a-8ae0-2a143ad1d2d0": {
+        "symbol": "XPEV",
+        "quantity": 0.0,
+        "avg_price": 0,
+        "strategy_id": "OPTION_WRITE_TRADING_001",
+        "instrument_type": "OPTION",
+        "last_updated": "2025-01-07T00:37:03.304291-05:00",
+        "strike": 12.0,
+        "expiry": "2025-01-03",
+        "option_type": "PUT"
+    },
+    "b15b1186-17a9-46d5-8c91-4ab900a20906": {
+        "symbol": "XPEV",
+        "quantity": 0.0,
+        "avg_price": 0,
+        "strategy_id": "OPTION_WRITE_TRADING_001",
+        "instrument_type": "STOCK",
+        "last_updated": "2025-01-07T00:37:03.326192-05:00"
     }
 }

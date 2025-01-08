@@ -1,6 +1,7 @@
 import logging
 from logging.handlers import RotatingFileHandler
 from config import Config
+from datetime import datetime
 
 def setup_logger(name):
     logger = logging.getLogger(name)
@@ -17,16 +18,20 @@ def setup_logger(name):
     )
     file_handler.setLevel(logging.DEBUG)
     file_formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
     )
+    file_formatter.converter = lambda *args: datetime.now(Config.TIMEZONE).timetuple()
     file_handler.setFormatter(file_formatter)
     
     # Console handler - INFO level for cleaner console output
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)  # Keep INFO level for console
+    console_handler.setLevel(logging.INFO)
     console_formatter = logging.Formatter(
-        '%(asctime)s - %(levelname)s - %(message)s'
+        '%(asctime)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
     )
+    console_formatter.converter = lambda *args: datetime.now(Config.TIMEZONE).timetuple()
     console_handler.setFormatter(console_formatter)
     
     # Add handlers

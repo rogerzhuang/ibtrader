@@ -1,15 +1,17 @@
+import os
 import pytz
 from pathlib import Path
 from typing import Dict, List
 
 class Config:
     # Connection settings
-    TWS_HOST = "127.0.0.1"
-    TWS_PORT = 7496
+    TWS_HOST = os.getenv('IB_HOST', '127.0.0.1')
+    TWS_PORT = int(os.getenv('IB_PORT', '7496'))
     CLIENT_ID = 1025
+    ACCOUNT_ID = os.getenv('IB_ACCOUNT_ID')
     
     # Trading settings
-    TOTAL_CAPITAL = 500000
+    TOTAL_CAPITAL = float(os.getenv('TOTAL_CAPITAL', '500000'))
     
     # Timezone settings
     TIMEZONE = pytz.timezone('US/Eastern')
@@ -29,30 +31,51 @@ class Config:
             'type': 'PAIRS',
             'strategy_id': 'PAIRS_TRADING_001',
             'signal_base_url': "http://ec2-44-231-211-145.us-west-2.compute.amazonaws.com/pairs/signals",
-            'signal_check_hour': 15,
-            'signal_check_minute': 55,
-            'capital_allocation_pct': 0.2,
-            'enabled': True,
+            'signal_check_times': [
+                {'hour': 15, 'minute': 55}
+            ],
+            'capital_allocation_pct': float(os.getenv('PAIRS_CAPITAL_PCT', '0.2')),
+            'enabled': os.getenv('PAIRS_ENABLED', 'true').lower() == 'true',
             'timezone': pytz.timezone('US/Eastern'),
         },
         {
             'type': 'OPTION_WRITE',
             'strategy_id': 'OPTION_WRITE_TRADING_001',
-            'signal_base_url': "http://ec2-44-231-211-145.us-west-2.compute.amazonaws.com/options/signals/1",
-            'signal_check_hour': 13,
-            'signal_check_minute': 0,
-            'capital_allocation_pct': 0.4,
-            'enabled': True,
+            'signal_base_url': "http://ec2-44-231-211-145.us-west-2.compute.amazonaws.com/options/1/signals",
+            'signal_check_times': [
+                {
+                    'hour': 9,
+                    'minute': 30,
+                    'check_type': 'EXERCISE_SQUARES'  # Only check exercise/assignment positions
+                },
+                {
+                    'hour': 13,
+                    'minute': 0,
+                    'check_type': 'OPTION_SIGNALS'    # Fetch new option signals
+                }
+            ],
+            'capital_allocation_pct': float(os.getenv('OPTION_WRITE_1_CAPITAL_PCT', '0.4')),
+            'enabled': os.getenv('OPTION_WRITE_1_ENABLED', 'true').lower() == 'true',
             'timezone': pytz.timezone('US/Eastern'),
         },
         {
             'type': 'OPTION_WRITE',
             'strategy_id': 'OPTION_WRITE_TRADING_002',
-            'signal_base_url': "http://ec2-44-231-211-145.us-west-2.compute.amazonaws.com/options/signals/2",
-            'signal_check_hour': 9,
-            'signal_check_minute': 31,
-            'capital_allocation_pct': 0.4,
-            'enabled': True,
+            'signal_base_url': "http://ec2-44-231-211-145.us-west-2.compute.amazonaws.com/options/2/signals",
+            'signal_check_times': [
+                {
+                    'hour': 9,
+                    'minute': 30,
+                    'check_type': 'EXERCISE_SQUARES'  # Only check exercise/assignment positions
+                },
+                {
+                    'hour': 9,
+                    'minute': 31,
+                    'check_type': 'OPTION_SIGNALS'    # Fetch new option signals
+                }
+            ],
+            'capital_allocation_pct': float(os.getenv('OPTION_WRITE_2_CAPITAL_PCT', '0.4')),
+            'enabled': os.getenv('OPTION_WRITE_2_ENABLED', 'true').lower() == 'true',
             'timezone': pytz.timezone('US/Eastern'),
         }
         # Add more strategies as needed

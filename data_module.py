@@ -1,17 +1,23 @@
 from ibapi.common import BarData
+from ibapi.contract import Contract
 from threading import Lock
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from logger import setup_logger
+import pytz
+from typing import Optional
 
 logger = setup_logger('DataModule')
 
 class DataModule:
     def __init__(self):
         self.streaming_data = {}   # Store real-time data by symbol
+        self.historical_data = {}  # symbol -> {date -> price}
         self.data_lock = Lock()    # Thread safety for data access
         self.tick_sizes = {}       # Store tick sizes by symbol
+        self.historical_data_requests = {}  # reqId -> symbol
+        self.HISTORICAL_DATA_REQ_ID_BASE = 10000  # Base for historical data reqIds
         
     def set_tick_size(self, symbol: str, tick_size: float):
         """Store tick size information for a symbol"""
@@ -81,3 +87,74 @@ class DataModule:
                     'underlying_price': data.get(f'underlying_{price_type}')
                 }
             return data.get(price_type)
+    
+    def request_historical_data(self, app, symbol: str, end_date: datetime):
+        """Request historical daily data from IBKR
+        Args:
+            app: TradingApp instance
+            symbol: Symbol to request data for
+            end_date: End date for historical data request
+        """
+        try:
+            # Create contract
+            contract = Contract()
+            contract.symbol = symbol
+            contract.secType = "STK"
+            contract.exchange = "SMART"
+            contract.currency = "USD"
+            
+            # Use next day at midnight in ET to ensure we get full closing data
+            end_datetime = (end_date + timedelta(days=1)).replace(
+                hour=0, minute=0, second=0
+            )
+            # Format with correct spacing for timezone
+            end_str = end_datetime.strftime('%Y%m%d %H:%M:%S US/Eastern')
+            
+            # Generate request ID with offset to avoid conflicts
+            req_id = self.HISTORICAL_DATA_REQ_ID_BASE + len(self.historical_data_requests)
+            self.historical_data_requests[req_id] = symbol
+            
+            # Request 2 weeks of data (to ensure we have the close price)
+            app.reqHistoricalData(
+                reqId=req_id,
+                contract=contract,
+                endDateTime=end_str,
+                durationStr="2 W",
+                barSizeSetting="1 day",
+                whatToShow="TRADES",
+                useRTH=1,
+                formatDate=1,
+                keepUpToDate=False,
+                chartOptions=[]
+            )
+            
+            logger.info(f"Requested historical data for {symbol} ending {end_str}")
+            
+        except Exception as e:
+            logger.error(f"Error requesting historical data for {symbol}: {e}")
+    
+    def process_historical_data(self, reqId: int, bar: BarData):
+        """Process historical data bar from IBKR"""
+        try:
+            symbol = self.historical_data_requests.get(reqId)
+            if not symbol:
+                logger.error(f"Unknown reqId for historical data: {reqId}")
+                return
+                
+            # Parse date from bar
+            bar_date = datetime.strptime(bar.date, '%Y%m%d').date()
+            
+            with self.data_lock:
+                if symbol not in self.historical_data:
+                    self.historical_data[symbol] = {}
+                self.historical_data[symbol][bar_date] = bar.close
+                
+            logger.debug(f"Stored historical close for {symbol} on {bar_date}: {bar.close}")
+            
+        except Exception as e:
+            logger.error(f"Error processing historical data: {e}")
+    
+    def get_historical_close(self, symbol: str, date: datetime) -> Optional[float]:
+        """Get historical close price for a symbol on a specific date"""
+        with self.data_lock:
+            return self.historical_data.get(symbol, {}).get(date.date())

@@ -12,7 +12,7 @@ from ibapi.client import EClient
 from ibapi.wrapper import EWrapper
 from ibapi.contract import Contract
 from ibapi.order import Order
-from ibapi.common import TickerId
+from ibapi.common import TickerId, BarData
 from ibapi.order_state import OrderState
 
 from data_module import DataModule
@@ -61,6 +61,9 @@ class TradingApp(EWrapper, EClient):
 
         # Add daily cleanup tracking
         self.last_cleanup_date = None
+
+        # Add daily exercise tracking
+        self.last_exercise_date = None
 
         # Add execution strategy tracking
         self.active_executions = {}  # order_id -> execution_strategy
@@ -180,113 +183,32 @@ class TradingApp(EWrapper, EClient):
         try:
             logger.info(f"Order {orderId} status: {status} - Filled: {filled}, Remaining: {remaining}")
             
-            # Add execution strategy status processing
-            with self.execution_lock:  # Use the same lock for the entire order processing
+            with self.execution_lock:
+                # Handle execution strategy status
                 execution_strategy = self.active_executions.get(orderId)
                 if execution_strategy:
                     execution_strategy.process_order_status(
                         status, filled, remaining, avgFillPrice
                     )
-                
-                # Process fills (both partial and complete)
-                if filled > 0:  # Any fill amount
-                    # Get order info
-                    order = self.position_manager.orders.get(orderId)
-                    logger.debug(f"Looking for order {orderId}, found: {order}")
-                    
-                    if order:
-                        # Track last processed fill to handle only new fills
-                        last_processed_fill = order.get('last_processed_fill', 0)
-                        new_fill_amount = filled - last_processed_fill
-                        
-                        if new_fill_amount > 0:  # Only process if there's new fill amount
-                            position_id = order['position_id']
-                            # Get current position directly using position_id
-                            current_position = self.position_manager.positions.get(position_id, {
-                                'quantity': 0,
-                                'avg_price': 0
-                            })
-                            
-                            logger.debug(
-                                f"Processing position update for position_id {position_id} - "
-                                f"Current: {current_position.get('quantity', 0)} @ "
-                                f"{current_position.get('avg_price', 0)}"
-                            )
-                            
-                            # Calculate position updates
-                            filled_quantity = (
-                                new_fill_amount if order['action'] == 'BUY' 
-                                else -new_fill_amount
-                            )
-                            current_quantity = current_position.get('quantity', 0)
-                            current_avg_price = current_position.get('avg_price', 0)
-                            new_quantity = current_quantity + filled_quantity
-                            
-                            if new_quantity != 0:
-                                if current_quantity * new_quantity > 0:  # Same direction
-                                    if abs(new_quantity) > abs(current_quantity):  # Adding to position
-                                        # Weighted average of old and new
-                                        new_avg_price = (
-                                            (abs(current_quantity) * current_avg_price) + 
-                                            (abs(filled_quantity) * lastFillPrice)
-                                        ) / abs(new_quantity)
-                                    else:  # Reducing position
-                                        # Keep original average price
-                                        new_avg_price = current_avg_price
-                                else:  # Direction changed (crossed zero)
-                                    # Use new fill price when crossing zero
-                                    new_avg_price = lastFillPrice
-                            else:  # Position closed
-                                new_avg_price = 0
-                            
-                            # Add debug log here
-                            # logger.debug(
-                            #     f"Calculated new position for {order['symbol']}: "
-                            #     f"Quantity {new_quantity} @ {new_avg_price} "
-                            #     f"(Fill: {filled_quantity} @ {lastFillPrice})"
-                            # )
-                            
-                            # Prepare position update with additional information
-                            update_info = {
-                                'pair_id': order.get('pair_id')
-                            }
 
-                            # Add instrument-specific details
-                            if order['instrument_type'] == 'OPTION':
-                                update_info.update({
-                                    'strike': order['strike'],
-                                    'expiry': order['expiry'],
-                                    'option_type': order['option_type']
-                                })
-                            elif order['instrument_type'] == 'FUTURE':
-                                update_info.update({
-                                    'expiry': order['expiry']
-                                })
-                            
-                            # Update position
-                            self.position_manager.update_position(
-                                order['symbol'],
-                                new_quantity,
-                                new_avg_price,
-                                order['instrument_type'],
-                                order.get('strategy_id'),
-                                position_id=position_id,
-                                **update_info
-                            )
-                            
-                            # Update last processed fill
-                            order['last_processed_fill'] = filled
-                            
-                            # Mark order as completed if fully filled
-                            if remaining == 0:
-                                order['fill_processed'] = True
-                                
-                            # Update order info
-                            updates = {
-                                'last_processed_fill': filled,
-                                'fill_processed': remaining == 0
-                            }
-                            self.position_manager.update_order(orderId, updates)
+                # Normal fill processing for existing orders
+                order = self.position_manager.orders.get(orderId)
+                if order and filled > 0:
+                    last_processed_fill = order.get('last_processed_fill', 0)
+                    new_fill_amount = filled - last_processed_fill
+                    
+                    if new_fill_amount > 0:
+                        self.position_manager.process_fill(
+                            order_id=orderId,
+                            new_fill_quantity=new_fill_amount,
+                            fill_price=lastFillPrice
+                        )
+                        
+                        # Update order tracking
+                        self.position_manager.update_order(orderId, {
+                            'last_processed_fill': filled,
+                            'fill_processed': remaining == 0
+                        })
 
         except Exception as e:
             logger.error(f"Error processing order status: {e}")
@@ -298,13 +220,18 @@ class TradingApp(EWrapper, EClient):
 
     def execDetails(self, reqId: int, contract: Contract, execution):
         """Handle execution details"""
-        logger.info(
-            f"Execution. ReqId: {reqId}, Symbol: {contract.symbol}, "
-            f"SecType: {contract.secType}, Currency: {contract.currency}, "
-            f"Execution ID: {execution.execId}, Time: {execution.time}, "
-            f"Account: {execution.acctNumber}, Exchange: {execution.exchange}, "
-            f"Shares: {execution.shares}, Price: {execution.price}"
-        )
+        try:
+            logger.info(
+                f"Execution. ReqId: {reqId}, Symbol: {contract.symbol}, "
+                f"SecType: {contract.secType}, Currency: {contract.currency}, "
+                f"Execution ID: {execution.execId}, Time: {execution.time}, "
+                f"Account: {execution.acctNumber}, Exchange: {execution.exchange}, "
+                f"Shares: {execution.shares}, Price: {execution.price}, "
+                f"OrderId: {execution.orderId}"
+            )
+
+        except Exception as e:
+            logger.error(f"Error processing execution details: {e}")
 
     def wait_for_market_data(self, symbol: str) -> bool:
         """Wait for market data to be ready for a symbol and has valid prices
@@ -353,6 +280,77 @@ class TradingApp(EWrapper, EClient):
             self.subscribed_symbols.clear()
             self.last_cleanup_date = current_time.date()
 
+    def _perform_daily_exercise(self) -> None:
+        """Process option exercises/assignments/expirations at end of day"""
+        current_time = datetime.now(Config.TIMEZONE)
+        
+        # Only run at 17:30 and if not already run today
+        if not (current_time.hour == 17 and current_time.minute == 30):
+            return
+            
+        # Check if already run today
+        current_date = current_time.date()
+        if self.last_exercise_date == current_date:
+            logger.debug("Daily exercise already processed today")
+            return
+            
+        logger.info("Performing daily option exercise check")
+        
+        # Get all option positions
+        positions = self.position_manager.get_all_positions()
+        
+        for pos_id, position in positions.items():
+            try:
+                # Skip if not an option or zero quantity
+                if (position['instrument_type'] != 'OPTION' or 
+                    position['quantity'] == 0):
+                    continue
+                
+                # Parse expiration date
+                expiry = datetime.strptime(
+                    position['expiry'], 
+                    '%Y-%m-%d'
+                ).replace(tzinfo=Config.TIMEZONE)
+                
+                # Skip if not expired
+                if expiry.date() > current_date:
+                    continue
+                    
+                # Get underlying symbol
+                symbol = position['symbol']
+                
+                # Request historical data if needed
+                close_price = self.data_module.get_historical_close(symbol, expiry)
+                if close_price is None:
+                    self.data_module.request_historical_data(self, symbol, expiry)
+                    # Wait for data (with timeout)
+                    start_time = time.time()
+                    while time.time() - start_time < 5:  # 5 second timeout
+                        close_price = self.data_module.get_historical_close(symbol, expiry)
+                        if close_price is not None:
+                            break
+                        time.sleep(0.1)
+                    
+                    if close_price is None:
+                        logger.error(
+                            f"Failed to get close price for {symbol} on {expiry.date()}"
+                        )
+                        continue
+                
+                # Process exercise/assignment/expiration
+                self.position_manager.process_exercise(
+                    symbol=symbol,
+                    position=position,
+                    close_price=close_price,
+                    pos_id=pos_id
+                )
+                
+            except Exception as e:
+                logger.error(f"Error processing exercise for position {pos_id}: {e}")
+        
+        # Mark as run for today
+        self.last_exercise_date = current_date
+    
     def process_signals(self):
         """Process trading signals from all strategies"""
         while self.running:
@@ -365,10 +363,16 @@ class TradingApp(EWrapper, EClient):
                 # Check for daily cleanup
                 self._perform_daily_cleanup()
                 
+                # Check for option exercises
+                self._perform_daily_exercise()
+                
                 # Check for new signals
                 if self.strategy_module.check_trading_time():
                     logger.info("Trading window active - fetching new signals")
-                    self.strategy_module.fetch_signals()
+                    try:
+                        self.strategy_module.fetch_signals()
+                    except Exception as e:
+                        logger.error(f"Error in strategy_module.fetch_signals(): {str(e)}", exc_info=True)
                 
                 # Process any signals from any strategy
                 signal = self.strategy_module.get_next_signal()
@@ -547,3 +551,10 @@ class TradingApp(EWrapper, EClient):
             symbols_to_resubscribe = list(self.subscribed_symbols)
             self.subscribed_symbols.clear()
             self.request_market_data(symbols_to_resubscribe)
+
+    def historicalData(self, reqId: int, bar: BarData):
+        """Process historical data from IBKR"""
+        try:
+            self.data_module.process_historical_data(reqId, bar)
+        except Exception as e:
+            logger.error(f"Error processing historical data: {e}")
