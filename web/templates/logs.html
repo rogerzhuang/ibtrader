@@ -85,6 +85,20 @@
     <script>
       const logContainer = document.getElementById("log-container");
       const eventSource = new EventSource(window.location.href + "/stream");
+      const MAX_LINES = 1000;
+      let isAutoScrollEnabled = true; // Start with auto-scroll enabled
+
+      // Add scroll event listener to detect user scrolling
+      logContainer.addEventListener("scroll", () => {
+        const scrolledToBottom =
+          Math.abs(
+            logContainer.scrollHeight -
+              logContainer.clientHeight -
+              logContainer.scrollTop
+          ) < 1;
+
+        isAutoScrollEnabled = scrolledToBottom;
+      });
 
       eventSource.onmessage = function (e) {
         const line = e.data;
@@ -101,8 +115,17 @@
           div.className = "debug";
         }
 
+        // Remove old lines if we exceed MAX_LINES
+        while (logContainer.childNodes.length >= MAX_LINES) {
+          logContainer.removeChild(logContainer.firstChild);
+        }
+
         logContainer.appendChild(div);
-        logContainer.scrollTop = logContainer.scrollHeight;
+
+        // Auto-scroll only if enabled
+        if (isAutoScrollEnabled) {
+          logContainer.scrollTop = logContainer.scrollHeight;
+        }
       };
 
       eventSource.onerror = function () {
@@ -110,6 +133,7 @@
           window.location.reload();
         }, 5000);
       };
+
     </script>
   </body>
 </html>

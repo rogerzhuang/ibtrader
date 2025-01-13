@@ -217,8 +217,12 @@ class PositionManager:
         except Exception as e:
             logger.error(f"Error saving orders: {e}")
 
-    def update_order(self, order_id: int, updates: dict):
-        """Update or create order information and save to file"""
+    def update_order(self, order_id: str, updates: dict):
+        """Update or create order information and save to file
+        Args:
+            order_id: UUID-based order ID (not IB order ID)
+            updates: Dictionary of order updates
+        """
         with self.order_lock:
             if order_id in self.orders:
                 self.orders[order_id].update(updates)
@@ -226,8 +230,11 @@ class PositionManager:
                 self.orders[order_id] = updates
             self._save_orders()
 
-    def process_fill(self, order_id: int, new_fill_quantity: float, fill_price: float) -> None:
-        """Process a fill, handling both regular fills and closing exercises"""
+    def process_fill(self, order_id: str, new_fill_quantity: float, fill_price: float) -> None:
+        """Process a fill, handling both regular fills and closing exercises
+        Args:
+            order_id: UUID-based order ID (not IB order ID)
+        """
         with self.order_lock:
             self._process_fill_internal(
                 order_id=order_id,

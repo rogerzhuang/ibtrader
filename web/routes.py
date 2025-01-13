@@ -57,15 +57,20 @@ def stream_logs():
     today = datetime.now(logs.config.TIMEZONE).date()
     
     def generate():
+        # Start with last 1000 lines for today
         with open(log_path, 'r') as f:
-            for line in f:
+            lines = f.readlines()
+            recent_lines = lines[-1000:] if len(lines) > 1000 else lines
+            for line in recent_lines:
                 try:
                     log_date = datetime.strptime(line.split()[0], '%Y-%m-%d').date()
+
                     if log_date == today:
                         yield f"data: {line}\n\n"
                 except (ValueError, IndexError):
                     continue
         
+        # Then stream new lines
         for line in tail_file(log_path):
             try:
                 log_date = datetime.strptime(line.split()[0], '%Y-%m-%d').date()

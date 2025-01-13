@@ -11,7 +11,7 @@ class Config:
     ACCOUNT_ID = os.getenv('IB_ACCOUNT_ID')
     
     # Trading settings
-    TOTAL_CAPITAL = float(os.getenv('TOTAL_CAPITAL', '500000'))
+    TOTAL_CAPITAL = float(os.getenv('TOTAL_CAPITAL', '750000'))
     
     # Timezone settings
     TIMEZONE = pytz.timezone('US/Eastern')
@@ -34,7 +34,7 @@ class Config:
             'signal_check_times': [
                 {'hour': 15, 'minute': 55}
             ],
-            'capital_allocation_pct': float(os.getenv('PAIRS_CAPITAL_PCT', '0.2')),
+            'capital_allocation_pct': float(os.getenv('PAIRS_CAPITAL_PCT', '0.13')),
             'enabled': os.getenv('PAIRS_ENABLED', 'true').lower() == 'true',
             'timezone': pytz.timezone('US/Eastern'),
         },
@@ -54,7 +54,7 @@ class Config:
                     'check_type': 'OPTION_SIGNALS'    # Fetch new option signals
                 }
             ],
-            'capital_allocation_pct': float(os.getenv('OPTION_WRITE_1_CAPITAL_PCT', '0.4')),
+            'capital_allocation_pct': float(os.getenv('OPTION_WRITE_1_CAPITAL_PCT', '0.27')),
             'enabled': os.getenv('OPTION_WRITE_1_ENABLED', 'true').lower() == 'true',
             'timezone': pytz.timezone('US/Eastern'),
         },
@@ -74,12 +74,24 @@ class Config:
                     'check_type': 'OPTION_SIGNALS'    # Fetch new option signals
                 }
             ],
-            'capital_allocation_pct': float(os.getenv('OPTION_WRITE_2_CAPITAL_PCT', '0.4')),
+            'capital_allocation_pct': float(os.getenv('OPTION_WRITE_2_CAPITAL_PCT', '0.27')),
             'enabled': os.getenv('OPTION_WRITE_2_ENABLED', 'true').lower() == 'true',
             'timezone': pytz.timezone('US/Eastern'),
-        }
+        },
+        {
+            'type': 'ZACKS',
+            'strategy_id': 'ZACKS_TRADING_001',
+            'signal_base_url': "http://ec2-44-231-211-145.us-west-2.compute.amazonaws.com/zacks/signals",
+            'signal_check_times': [
+                {'hour': 9, 'minute': 45}
+            ],
+            'capital_allocation_pct': float(os.getenv('OPTION_WRITE_2_CAPITAL_PCT', '0.33')),
+            'enabled': os.getenv('ZACKS_ENABLED', 'true').lower() == 'true',
+            'timezone': pytz.timezone('US/Eastern'),
+        },
         # Add more strategies as needed
     ]
+
     
     @classmethod
     def get_enabled_strategies(cls) -> List[Dict]:

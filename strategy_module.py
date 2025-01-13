@@ -1,7 +1,8 @@
 from typing import List, Dict
-from strategies import BaseStrategy, PairsTradingStrategy, OptionWriteStrategy
+from strategies import BaseStrategy, PairsTradingStrategy, OptionWriteStrategy, ZacksStrategy
 import logging
 from logger import setup_logger
+
 
 logger = setup_logger('StrategyModule')
 
@@ -16,9 +17,10 @@ class StrategyModule:
         strategy_classes = {
             'PAIRS': PairsTradingStrategy,
             'OPTION_WRITE': OptionWriteStrategy,
+            'ZACKS': ZacksStrategy,
             # Add more strategy classes here
         }
-        
+
         for config in strategy_configs:
             strategy_type = config['type']
             if strategy_type in strategy_classes:

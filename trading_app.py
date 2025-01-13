@@ -68,6 +68,8 @@ class TradingApp(EWrapper, EClient):
         # Add execution strategy tracking
         self.active_executions = {}  # order_id -> execution_strategy
         self.execution_check_interval = 1  # Check executions every second
+        
+        self.ib_to_uuid_map = {}  # Map IB order IDs to UUID order IDs
     
     def connect_and_wait(self) -> bool:
         """Attempt to connect to TWS
@@ -183,29 +185,35 @@ class TradingApp(EWrapper, EClient):
         try:
             logger.info(f"Order {orderId} status: {status} - Filled: {filled}, Remaining: {remaining}")
             
+            # Get UUID order ID from IB order ID
+            uuid_order_id = self.ib_to_uuid_map.get(orderId)
+            if not uuid_order_id:
+                logger.error(f"No UUID found for IB order ID {orderId}")
+                return
+            
             with self.execution_lock:
                 # Handle execution strategy status
-                execution_strategy = self.active_executions.get(orderId)
+                execution_strategy = self.active_executions.get(uuid_order_id)
                 if execution_strategy:
                     execution_strategy.process_order_status(
                         status, filled, remaining, avgFillPrice
                     )
 
                 # Normal fill processing for existing orders
-                order = self.position_manager.orders.get(orderId)
+                order = self.position_manager.orders.get(uuid_order_id)
                 if order and filled > 0:
                     last_processed_fill = order.get('last_processed_fill', 0)
                     new_fill_amount = filled - last_processed_fill
                     
                     if new_fill_amount > 0:
                         self.position_manager.process_fill(
-                            order_id=orderId,
+                            order_id=uuid_order_id,
                             new_fill_quantity=new_fill_amount,
                             fill_price=lastFillPrice
                         )
                         
                         # Update order tracking
-                        self.position_manager.update_order(orderId, {
+                        self.position_manager.update_order(uuid_order_id, {
                             'last_processed_fill': filled,
                             'fill_processed': remaining == 0
                         })
@@ -239,25 +247,33 @@ class TradingApp(EWrapper, EClient):
         """
         start_time = time.time()
         while time.time() - start_time < self.market_data_timeout:
-            data = self.data_module.streaming_data.get(symbol, {})
-            tick_size = self.data_module.get_tick_size(symbol)
-            
-            # Check both price data and tick size
-            has_valid_prices = (
-                data.get('bid') is not None and 
-                data.get('ask') is not None and
-                data.get('last') is not None and
-                tick_size is not None  # Add tick size check
-            )
-            
-            if has_valid_prices:
-                logger.info(
-                    f"Market data ready for {symbol} with valid prices: {data}, "
-                    f"tick size: {tick_size}"
+            try:
+                data = self.data_module.streaming_data.get(symbol, {})
+                tick_size = self.data_module.get_tick_size(symbol)
+                
+                # Get bid and ask with default of None (not 0)
+                bid = data.get('bid')
+                ask = data.get('ask')
+                
+                # First check if values exist and then compare with 0
+                has_valid_prices = (
+                    bid is not None and bid > 0 and 
+                    ask is not None and ask > 0 and
+                    tick_size is not None
                 )
-                return True
-            
-            time.sleep(0.1)
+                
+                if has_valid_prices:
+                    logger.info(
+                        f"Market data ready for {symbol} with valid prices: {data}, "
+                        f"tick size: {tick_size}"
+                    )
+                    return True
+                
+                time.sleep(0.1)
+                
+            except Exception as e:
+                logger.error(f"Error checking market data for {symbol}: {e}")
+                time.sleep(0.1)
         
         # Log what data we actually have when timeout occurs
         data = self.data_module.streaming_data.get(symbol, {})
@@ -291,7 +307,7 @@ class TradingApp(EWrapper, EClient):
         # Check if already run today
         current_date = current_time.date()
         if self.last_exercise_date == current_date:
-            logger.debug("Daily exercise already processed today")
+            # logger.debug("Daily exercise already processed today")
             return
             
         logger.info("Performing daily option exercise check")
@@ -409,13 +425,14 @@ class TradingApp(EWrapper, EClient):
                     if contract and order:
                         execution_strategy.place_order(contract, order)
                         
-                        # Track the execution strategy
+                        # Track the execution strategy using UUID
                         with self.execution_lock:
                             self.active_executions[execution_strategy.order_id] = execution_strategy
                         
-                        # Store order info with position ID
+                        # Store order info with position ID and IB order ID
+                        order_info['ib_order_id'] = execution_strategy.ib_order_id
                         self.position_manager.update_order(execution_strategy.order_id, order_info)
-                        logger.info(f"Placed order {execution_strategy.order_id}: {order_info} Position ID: {order_info['position_id']}")
+                        logger.info(f"Placed order {execution_strategy.order_id} (IB: {execution_strategy.ib_order_id}): {order_info}")
                     else:
                         logger.error(f"Failed to create order for signal: {signal}")
 

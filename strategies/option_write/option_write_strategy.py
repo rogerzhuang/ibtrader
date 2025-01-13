@@ -116,6 +116,14 @@ class OptionWriteStrategy(BaseStrategy):
         try:
             # Process option trades
             for option_trade in signals.options_trades:
+                # Skip trades with 0 contracts
+                if option_trade.contracts <= 0:
+                    logger.info(
+                        f"[OPTION_WRITE:{self.strategy_id}] Skipping zero-contract trade: "
+                        f"{option_trade.contract} {option_trade.strike} {option_trade.expiry}"
+                    )
+                    continue
+
                 # Extract underlying ticker and option type from the contract string
                 contract_parts = option_trade.contract.split()
                 ticker = contract_parts[0]
