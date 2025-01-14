@@ -75,7 +75,7 @@ class DataModule:
             elif tick_type == 'ASK':
                 self.streaming_data[symbol]['ask'] = price
             
-            logger.debug(f"Processed {tick_type} data for {symbol}: {price}")
+            # logger.debug(f"Processed {tick_type} data for {symbol}: {price}")
     
     def get_latest_price(self, symbol: str, price_type: str = 'last', include_underlying: bool = False) -> dict:
         """Get latest price data including underlying if requested"""

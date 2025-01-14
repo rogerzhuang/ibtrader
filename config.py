@@ -83,9 +83,9 @@ class Config:
             'strategy_id': 'ZACKS_TRADING_001',
             'signal_base_url': "http://ec2-44-231-211-145.us-west-2.compute.amazonaws.com/zacks/signals",
             'signal_check_times': [
-                {'hour': 9, 'minute': 45}
+                {'hour': 13, 'minute': 20}
             ],
-            'capital_allocation_pct': float(os.getenv('OPTION_WRITE_2_CAPITAL_PCT', '0.33')),
+            'capital_allocation_pct': float(os.getenv('ZACKS_CAPITAL_PCT', '0.33')),
             'enabled': os.getenv('ZACKS_ENABLED', 'true').lower() == 'true',
             'timezone': pytz.timezone('US/Eastern'),
         },
