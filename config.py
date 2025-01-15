@@ -30,7 +30,7 @@ class Config:
         {
             'type': 'PAIRS',
             'strategy_id': 'PAIRS_TRADING_001',
-            'signal_base_url': "http://ec2-44-231-211-145.us-west-2.compute.amazonaws.com/pairs/signals",
+            'signal_base_url': "https://strategy.qedgeam.com/pairs/signals",
             'signal_check_times': [
                 {'hour': 15, 'minute': 55}
             ],
@@ -41,7 +41,7 @@ class Config:
         {
             'type': 'OPTION_WRITE',
             'strategy_id': 'OPTION_WRITE_TRADING_001',
-            'signal_base_url': "http://ec2-44-231-211-145.us-west-2.compute.amazonaws.com/options/1/signals",
+            'signal_base_url': "https://strategy.qedgeam.com/options/1/signals",
             'signal_check_times': [
                 {
                     'hour': 9,
@@ -61,7 +61,7 @@ class Config:
         {
             'type': 'OPTION_WRITE',
             'strategy_id': 'OPTION_WRITE_TRADING_002',
-            'signal_base_url': "http://ec2-44-231-211-145.us-west-2.compute.amazonaws.com/options/2/signals",
+            'signal_base_url': "https://strategy.qedgeam.com/options/2/signals",
             'signal_check_times': [
                 {
                     'hour': 9,
@@ -81,9 +81,9 @@ class Config:
         {
             'type': 'ZACKS',
             'strategy_id': 'ZACKS_TRADING_001',
-            'signal_base_url': "http://ec2-44-231-211-145.us-west-2.compute.amazonaws.com/zacks/signals",
+            'signal_base_url': "https://strategy.qedgeam.com/zacks/signals",
             'signal_check_times': [
-                {'hour': 13, 'minute': 20}
+                {'hour': 9, 'minute': 45}
             ],
             'capital_allocation_pct': float(os.getenv('ZACKS_CAPITAL_PCT', '0.33')),
             'enabled': os.getenv('ZACKS_ENABLED', 'true').lower() == 'true',

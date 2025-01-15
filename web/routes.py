@@ -1,8 +1,10 @@
 from pathlib import Path
 from datetime import datetime
-from flask import Blueprint, Response, render_template, current_app
+from flask import Blueprint, Response, render_template, current_app, jsonify
 import pytz
 import time
+import json
+from collections import defaultdict
 
 logs = Blueprint('logs', __name__)
 
@@ -80,3 +82,34 @@ def stream_logs():
                 continue
     
     return Response(generate(), mimetype='text/event-stream')
+
+@logs.route('/positions')
+def get_positions():
+    """API endpoint to get positions grouped by strategy and instrument type"""
+    try:
+        with open('data/positions.json', 'r') as f:
+            positions = json.load(f)
+        
+        # Group positions by strategy and instrument type
+        grouped_positions = defaultdict(lambda: defaultdict(list))
+        
+        for position_id, position in positions.items():
+            strategy_id = position['strategy_id']
+            instrument_type = position['instrument_type']
+            
+            # Only include positions with non-zero quantity
+            if position['quantity'] != 0:
+                position['position_id'] = position_id  # Add ID to the position data
+                grouped_positions[strategy_id][instrument_type].append(position)
+        
+        return jsonify(grouped_positions)
+    
+    except FileNotFoundError:
+        return jsonify({'error': 'Positions file not found'}), 404
+    except json.JSONDecodeError:
+        return jsonify({'error': 'Invalid positions data'}), 500
+
+@logs.route('/positions/view')
+def view_positions():
+    """Render positions view page"""
+    return render_template('positions.html')

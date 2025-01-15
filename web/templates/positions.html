@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Trading Positions</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        background: #f5f7fa;
+        padding: 2rem;
+      }
+
+      h1 {
+        color: #1a1a1a;
+        margin-bottom: 2rem;
+        font-size: 2rem;
+        font-weight: 600;
+        text-align: center;
+      }
+
+      .strategy-group {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        margin-bottom: 2rem;
+        overflow: hidden;
+      }
+
+      .strategy-header {
+        background: #2c3e50;
+        color: white;
+        padding: 1rem 1.5rem;
+        font-size: 1.2rem;
+        font-weight: 500;
+      }
+
+      .instrument-group {
+        border-bottom: 1px solid #eee;
+        padding: 1rem;
+      }
+
+      .instrument-header {
+        color: #666;
+        font-weight: 500;
+        margin-bottom: 1rem;
+        padding: 0.5rem;
+        background: #f8f9fa;
+        border-radius: 6px;
+      }
+
+      .positions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1rem;
+        padding: 0.5rem;
+      }
+
+      .position {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid #eee;
+        transition: transform 0.2s;
+      }
+
+      .position:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+      }
+
+      .position-symbol {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+      }
+
+      .position-details {
+        font-size: 0.9rem;
+        color: #666;
+      }
+
+      .position-time {
+        font-size: 0.8rem;
+        color: #999;
+        margin-top: 0.5rem;
+      }
+
+      .quantity-positive {
+        color: #38a169;
+      }
+
+      .quantity-negative {
+        color: #e53e3e;
+      }
+
+      @media (max-width: 768px) {
+        body {
+          padding: 1rem;
+        }
+
+        .positions-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Trading Positions</h1>
+    <div id="positions"></div>
+
+    <script>
+      const basePath = window.location.pathname.split("/positions/")[0];
+
+      function formatDateTime(dateStr) {
+        const date = new Date(dateStr);
+        return date.toLocaleString();
+      }
+
+      function formatNumber(num) {
+        return Number(num)
+          .toFixed(2)
+          .replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      }
+
+      function fetchPositions() {
+        fetch(`${basePath}/positions`)
+          .then((response) => response.json())
+          .then((data) => {
+            const container = document.getElementById("positions");
+            container.innerHTML = "";
+
+            // Sort strategies
+            const sortedStrategies = Object.entries(data).sort((a, b) =>
+              a[0].localeCompare(b[0])
+            );
+
+            sortedStrategies.forEach(([strategy, instruments]) => {
+              const strategyDiv = document.createElement("div");
+              strategyDiv.className = "strategy-group";
+
+              // Strategy header
+              const strategyHeader = document.createElement("div");
+              strategyHeader.className = "strategy-header";
+              strategyHeader.textContent = `Strategy: ${strategy}`;
+              strategyDiv.appendChild(strategyHeader);
+
+              // Sort instrument types
+              const sortedInstruments = Object.entries(instruments).sort(
+                (a, b) => a[0].localeCompare(b[0])
+              );
+
+              sortedInstruments.forEach(([type, positions]) => {
+                const instrumentDiv = document.createElement("div");
+                instrumentDiv.className = "instrument-group";
+
+                // Instrument type header
+                const instrumentHeader = document.createElement("div");
+                instrumentHeader.className = "instrument-header";
+                instrumentHeader.textContent = `Type: ${type}`;
+                instrumentDiv.appendChild(instrumentHeader);
+
+                // Create grid for positions
+                const positionsGrid = document.createElement("div");
+                positionsGrid.className = "positions-grid";
+
+                // Sort positions by symbol
+                positions.sort((a, b) => a.symbol.localeCompare(b.symbol));
+
+                positions.forEach((position) => {
+                  const posDiv = document.createElement("div");
+                  posDiv.className = "position";
+
+                  // Symbol
+                  const symbolDiv = document.createElement("div");
+                  symbolDiv.className = "position-symbol";
+                  symbolDiv.textContent = position.symbol;
+
+                  // Position details
+                  const detailsDiv = document.createElement("div");
+                  detailsDiv.className = "position-details";
+                  const quantityClass =
+                    position.quantity > 0
+                      ? "quantity-positive"
+                      : "quantity-negative";
+
+                  let details = `<span class="${quantityClass}">${formatNumber(
+                    position.quantity
+                  )}</span> @ $${formatNumber(position.avg_price)}`;
+                  if (type === "OPTION") {
+                    details += `<br>${position.option_type} ${position.strike} exp: ${position.expiry}`;
+                  }
+                  detailsDiv.innerHTML = details;
+
+                  // Last update time
+                  const timeDiv = document.createElement("div");
+                  timeDiv.className = "position-time";
+                  timeDiv.textContent = `Updated: ${formatDateTime(
+                    position.last_updated
+                  )}`;
+
+                  posDiv.appendChild(symbolDiv);
+                  posDiv.appendChild(detailsDiv);
+                  posDiv.appendChild(timeDiv);
+                  positionsGrid.appendChild(posDiv);
+                });
+
+                instrumentDiv.appendChild(positionsGrid);
+                strategyDiv.appendChild(instrumentDiv);
+              });
+
+              container.appendChild(strategyDiv);
+            });
+          })
+          .catch((error) => console.error("Error:", error));
+      }
+
+      // Initial load
+      fetchPositions();
+
+      // Refresh every 30 seconds
+      setInterval(fetchPositions, 30000);
+    </script>
+  </body>
+</html>
